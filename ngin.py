@@ -203,6 +203,7 @@ class Nx:
     v = c.visible       
     #v = CVisible()
     v.current = CActionType.tiles
+    v.priority = 0
     v.x = 0
     v.y = 0
     v.width = width
@@ -292,16 +293,10 @@ class Nx:
     c.ints.append(id)
     self.send(Head.cmd, c)
 
-  def angular(self, id:int, value:float) -> None:
-    c = Cmd()
-    c.strings.append('angular')
-    c.ints.append(id)
-    c.floats.append(value)
-    self.send(Head.cmd, c)
-
   def submit(self, id:int) -> None:
     c = Cmd()
     c.strings.append('submit')
+    c.ints.append(id)    
     c.ints.append(4041)
     self.send(Head.cmd, c)
 
@@ -313,7 +308,7 @@ class Nx:
     v = self.recv.wait_cmd()
     return v
 
-  def set_action_type(self, action_type:CActionType, is_flip_horizontal:bool = False) -> None:
+  def set_action_type(self, id:int, action_type:CActionType, is_flip_horizontal:bool = False) -> None:
     c = Cmd()
     c.strings.append('actionType')
     c.ints.append(id)

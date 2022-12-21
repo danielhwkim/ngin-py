@@ -6,8 +6,7 @@ from ngin import Nx, EventHandler, CObjectInfo
 
 class MyHandler(EventHandler):
   def __init__(self, nx):
-    self.nx = nx
-    self.nx = nx;        
+    self.nx = nx      
     self.key_down_left = False
     self.key_down_right = False
     self.actor_contacts = set()
