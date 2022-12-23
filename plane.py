@@ -5,7 +5,7 @@ import math
 from ngin import Nx, EventHandler, CObjectInfo
 
 class MyHandler(EventHandler):
-  def __init__(self, nx):
+  def __init__(self, nx:Nx):
     self.nx = nx      
     self.key_down_left = False
     self.key_down_right = False
@@ -40,6 +40,7 @@ class MyHandler(EventHandler):
     self.nx.send(Head.cobject, o, True)
     self.nx.forward(new_id, 0, 20)
     self.nx.timer(new_id, 0.7)
+    self.nx.audio_play('sfx/fire_1.mp3')
 
   def key_handler(self, c):
     c = c.key
@@ -84,6 +85,7 @@ class MyHandler(EventHandler):
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo', 4040)
   nx.set_event_handler(MyHandler(nx))
+  nx.bgm_play('music/bg_music.mp3')
   f = open('./data/planes0.tmj', "r")
   j = json.loads(f.read())
   f.close()

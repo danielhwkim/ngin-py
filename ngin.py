@@ -407,7 +407,7 @@ class Nx:
     c.floats.append(time)
     self.send(Head.cmd, c)
 
-  def audio_play(self, asset:str, volume:float) -> None:
+  def audio_play(self, asset:str, volume:float = 1) -> None:
     c = Cmd()
     c.strings.append('audio')
     c.strings.append('play')    
@@ -423,7 +423,7 @@ class Nx:
     c.ints.append(max_playsers)
     self.send(Head.cmd, c)    
 
-  def audio_loop(self, asset:str, volume:float) -> None:
+  def audio_loop(self, asset:str, volume:float = 1) -> None:
     c = Cmd()
     c.strings.append('audio')
     c.strings.append('loop')    
@@ -431,7 +431,7 @@ class Nx:
     c.floats.append(volume)
     self.send(Head.cmd, c)
 
-  def bgm_play(self, asset:str, volume:float) -> None:
+  def bgm_play(self, asset:str, volume:float = 1) -> None:
     c = Cmd()
     c.strings.append('bgm')
     c.strings.append('play')    
@@ -464,14 +464,14 @@ class Nx:
     c.floats.append(volume)
     self.send(Head.cmd, c)
 
-  def audio_cache_load(self, assets:list(str)) -> None:
+  def audio_cache_load(self, assets:list[str]) -> None:
     c = Cmd()
     c.strings.append('audioCache')
     c.strings.append('load')    
     c.strings.expend(assets)
     self.send(Head.cmd, c)
 
-  def audio_cache_clear(self, assets:list(str)) -> None:
+  def audio_cache_clear(self, assets:list[str]) -> None:
     c = Cmd()
     c.strings.append('audioCache')
     c.strings.append('clear')
