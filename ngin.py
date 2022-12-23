@@ -405,4 +405,81 @@ class Nx:
     c.strings.append('timer')
     c.ints.append(id)
     c.floats.append(time)
+    self.send(Head.cmd, c)
+
+  def audio_play(self, asset:str, volume:float) -> None:
+    c = Cmd()
+    c.strings.append('audio')
+    c.strings.append('play')    
+    c.strings.append(asset)       
+    c.floats.append(volume)
     self.send(Head.cmd, c)    
+
+  def audio_create_pool(self, asset:str, max_playsers:int) -> None:
+    c = Cmd()
+    c.strings.append('audio')
+    c.strings.append('pool')    
+    c.strings.append(asset)       
+    c.ints.append(max_playsers)
+    self.send(Head.cmd, c)    
+
+  def audio_loop(self, asset:str, volume:float) -> None:
+    c = Cmd()
+    c.strings.append('audio')
+    c.strings.append('loop')    
+    c.strings.append(asset)       
+    c.floats.append(volume)
+    self.send(Head.cmd, c)
+
+  def bgm_play(self, asset:str, volume:float) -> None:
+    c = Cmd()
+    c.strings.append('bgm')
+    c.strings.append('play')    
+    c.strings.append(asset)       
+    c.floats.append(volume)
+    self.send(Head.cmd, c)    
+
+  def bgm_stop(self) -> None:
+    c = Cmd()
+    c.strings.append('bgm')
+    c.strings.append('stop')    
+    self.send(Head.cmd, c)    
+
+  def bgm_pause(self) -> None:
+    c = Cmd()
+    c.strings.append('bgm')
+    c.strings.append('pause')    
+    self.send(Head.cmd, c)   
+
+  def bgm_resume(self) -> None:
+    c = Cmd()
+    c.strings.append('bgm')
+    c.strings.append('resume')    
+    self.send(Head.cmd, c)   
+
+  def bgm_volume(self, volume:float) -> None:
+    c = Cmd()
+    c.strings.append('bgm')
+    c.strings.append('volume')
+    c.floats.append(volume)
+    self.send(Head.cmd, c)
+
+  def audio_cache_load(self, assets:list(str)) -> None:
+    c = Cmd()
+    c.strings.append('audioCache')
+    c.strings.append('load')    
+    c.strings.expend(assets)
+    self.send(Head.cmd, c)
+
+  def audio_cache_clear(self, assets:list(str)) -> None:
+    c = Cmd()
+    c.strings.append('audioCache')
+    c.strings.append('clear')
+    c.strings.append(assets)    
+    self.send(Head.cmd, c)
+
+  def audio_cache_clear_all(self) -> None:
+    c = Cmd()
+    c.strings.append('audioCache')
+    c.strings.append('clear')
+    self.send(Head.cmd, c)     
