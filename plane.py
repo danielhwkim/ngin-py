@@ -44,40 +44,37 @@ class MyHandler(EventHandler):
   def key_handler(self, c):
     c = c.key
     if c.isPressed == False:
-      match c.name:
-        case 'Arrow Left':
-          self.key_down_left = False
-          if self.key_down_right:
-            self.go_right()
-          else:
-            self.stop()	
-        case 'Arrow Right':
-          self.key_down_right = False
-          if self.key_down_left:
-            self.go_left()
-          else:
-            self.stop()
-    else:
-      match c.name:
-        case 'Arrow Left':
-          self.key_down_left = True         
-          self.go_left()
-        case 'Arrow Right':
-          self.key_down_right = True            
+      if c.name == 'Arrow Left':
+        self.key_down_left = False
+        if self.key_down_right:
           self.go_right()
-        case 'Arrow Up':	
-          self.missile()
+        else:
+          self.stop()	
+      elif c.name == 'Arrow Right':
+        self.key_down_right = False
+        if self.key_down_left:
+          self.go_left()
+        else:
+          self.stop()
+    else:
+      if c.name == 'Arrow Left':
+        self.key_down_left = True         
+        self.go_left()
+      elif c.name == 'Arrow Right':
+        self.key_down_right = True            
+        self.go_right()
+      elif c.name == 'Arrow Up':	
+        self.missile()
 
   def contact_handler(self, c):
     contact = c.contact
-    if contact.isEnded == False:
-      if contact.info2 == 'missile':
-        self.nx.remove(contact.id2)
+    if contact.isEnded == False and contact.info2 == 'missile':
+      self.nx.remove(contact.id2)
 
-        o = self.nx.obj_builder(self.get_dynamic_id(), "fire")
-        o.tid = contact.id1
-        self.nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/tiles_packed.png', 16, [5])])
-        self.nx.send(Head.cobject, o, True)
+      o = self.nx.obj_builder(self.get_dynamic_id(), "fire")
+      o.tid = contact.id1
+      self.nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/tiles_packed.png', 16, [5])])
+      self.nx.send(Head.cobject, o, True)
 
   def event_handler(self, c):
     event = c.event

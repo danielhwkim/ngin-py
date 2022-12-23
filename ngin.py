@@ -52,19 +52,18 @@ class ServiceListener:
 class EventHandler:
   unexpected = 'Unexpected:'
   def handle(self, c):
-    match c.head:
-      case Head.key:
-        self.key_handler(c)
-      case Head.contact:
-        self.contact_handler(c)
-      case Head.event:
-        self.event_handler(c)
-      case Head.directional:
-        self.directional_handler(c)
-      case Head.button:
-        self.button_handler(c)
-      case _:
-        print(self.unexpected, c)
+    if c.head == Head.key:
+      self.key_handler(c)
+    elif c.head == Head.contact:
+      self.contact_handler(c)
+    elif c.head == Head.event:
+      self.event_handler(c)
+    elif c.head == Head.directional:
+      self.directional_handler(c)
+    elif c.head == Head.button:
+      self.button_handler(c)
+    else:
+      print(self.unexpected, c)
 
   def key_handler(self, c):
     print(self.unexpected, c)     
@@ -96,7 +95,7 @@ class Recv:
     self.return_cmd = False
     return r   
 
-  def event_loop(self):
+  def event_loop(self) -> None:
     while True:    
       if self.remaining < 4:
         if self.remaining == 0:
@@ -121,23 +120,22 @@ class Recv:
 
       c = CmdInfo()      
       c.ParseFromString(data)
-      match c.head:
-        case Head.ack:
-          c = c.ack
-          if self.return_ack:
-            #print(f'ACK:{c.code} {c.info}')          
-            return c.code
-          else:
-            print(f'Unexpected: ACK - {c.code} {c.info}')
-        case Head.cmd:
-          c = c.cmd
-          if self.return_cmd:
-            #print(f'Cmd:{c}')          
-            return c
-          else:
-            print(f'Unexpected: Cmd - {c}')
-        case _:
-          self.handler.handle(c)
+      if c.head == Head.ack:
+        c = c.ack
+        if self.return_ack:
+          #print(f'ACK:{c.code} {c.info}')          
+          return c.code
+        else:
+          print(f'Unexpected: ACK - {c.code} {c.info}')
+      elif c.head == Head.cmd:
+        c = c.cmd
+        if self.return_cmd:
+          #print(f'Cmd:{c}')          
+          return c
+        else:
+          print(f'Unexpected: Cmd - {c}')
+      else:
+        self.handler.handle(c)
 
 class CObjectInfo:
   def __init__(self, info:list[float]):
