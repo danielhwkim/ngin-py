@@ -28,7 +28,6 @@ class MyHandler(EventHandler):
 
   def missile(self, id):
     info = self.nx.get_obj_info(id)
-    info = CObjectInfo(info.floats)
     new_id = self.get_dynamic_id()
     o = self.nx.obj_builder(new_id, "missile")
 
@@ -118,7 +117,7 @@ if __name__ == "__main__":
 
   o = nx.obj_builder(10000, "wall")
   p = nx.physical_builder(o, BodyShape.rectangle, 0, 0)
-  p.type = BodyType.static
+  p.type = BodyType.staticBody
   p.width = 70
   p.height = 1  
   nx.send(Head.cobject, o, True)
@@ -139,7 +138,7 @@ if __name__ == "__main__":
   #p.angle = 1.5
   p.width = 2
   p.height = 2
-  v = nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/ships_packed.png', 32, [1])])
+  v = nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/ships_packed.png', 32, 32, [1])])
   v.width = 2
   v.height = 2
   nx.send(Head.cobject, o, True)
@@ -152,7 +151,7 @@ if __name__ == "__main__":
   p.angle = 3.14
   p.width = 2
   p.height = 2
-  v = nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/ships_packed.png', 32, [10])])
+  v = nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/ships_packed.png', 32, 32, [10])])
   v.width = 2
   v.height = 2
   nx.send(Head.cobject, o, True)

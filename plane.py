@@ -30,13 +30,12 @@ class MyHandler(EventHandler):
 
   def missile(self):
     info = self.nx.get_obj_info(100)
-    info = CObjectInfo(info.floats)
     new_id = self.get_dynamic_id()
     o = self.nx.obj_builder(new_id, "missile")
 
     p = self.nx.physical_builder(o, BodyShape.rectangle, info.x-0.5 + 2*math.sin(info.angle), info.y-0.5 - 2*math.cos(info.angle))
     p.angle = info.angle
-    v = self.nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/tiles_packed.png', 16, [1, 2, 3])])
+    v = self.nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/tiles_packed.png', 16, 16, [1, 2, 3])])
     self.nx.send(Head.cobject, o, True)
     self.nx.forward(new_id, 0, 20)
     self.nx.timer(new_id, 0.7)
@@ -74,7 +73,7 @@ class MyHandler(EventHandler):
 
       o = self.nx.obj_builder(self.get_dynamic_id(), "fire")
       o.tid = contact.id1
-      self.nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/tiles_packed.png', 16, [5])])
+      self.nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/tiles_packed.png', 16, 16, [5])])
       self.nx.send(Head.cobject, o, True)
 
   def event_handler(self, c):
@@ -98,9 +97,9 @@ if __name__ == "__main__":
   o = nx.obj_builder(100, "hero")
   p = nx.physical_builder(o, BodyShape.circle, 11, 11)
   p.angle = 1.5
-  p.width = 2
+  p.width = 2  
   p.height = 2
-  v = nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/ships_packed.png', 32, [1])])
+  v = nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/ships_packed.png', 32, 32, [1])])
   v.width = 2
   v.height = 2
   nx.send(Head.cobject, o, True)
@@ -112,7 +111,7 @@ if __name__ == "__main__":
   p = nx.physical_builder(o, BodyShape.circle, 11, 0)
   p.width = 2
   p.height = 2
-  v = nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/ships_packed.png', 32, [10])])
+  v = nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/ships_packed.png', 32, 32, [10])])
   v.width = 2
   v.height = 2
   nx.send(Head.cobject, o, True)

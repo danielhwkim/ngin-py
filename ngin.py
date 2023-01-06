@@ -213,8 +213,10 @@ class Nx:
     a = CAction()
     a.path = path
     a.stepTime = 200/1000
-    a.tileSizeX = tile_size
-    a.tileSizeY = tile_size
+    a.x = 0
+    a.y = 0
+    a.width = tile_size
+    a.height = tile_size
     a.indices.extend(data)
     a.repeat = False
     a.type = CActionType.tiles
@@ -242,7 +244,7 @@ class Nx:
     p.categoryBits = 0x0001
     p.maskBits = 0xFFFF
     p.fixedRotation = True
-    p.type = BodyType.dynamic
+    p.type = BodyType.dynamicBody
     p.trackable = True
     p.contactReport = True
     p.passableBottom = False
@@ -264,11 +266,13 @@ class Nx:
     v.actions.extend(actions)
     return v
 
-  def action_builder(self, path:str, tile_size:float, indices:list[int], type:CActionType = CActionType.idle, repeat:bool=True) -> CAction:
+  def action_builder(self, path:str, width:float, height:float, indices:list[int], type:CActionType = CActionType.idle, repeat:bool=True) -> CAction:
     a = CAction()
     a.path = path
-    a.tileSizeX = tile_size
-    a.tileSizeY = tile_size
+    a.x = 0
+    a.y = 0
+    a.width = width
+    a.height = height
     a.indices.extend(indices)
     a.stepTime = 0.2
     a.type = type
@@ -298,13 +302,17 @@ class Nx:
     c.ints.append(4041)
     self.send(Head.cmd, c)
 
-  def get_obj_info(self, id:int):
+  def _get_obj_info(self, id:int):
     c = Cmd()
     c.strings.append('objinfo')
     c.ints.append(id)
     self.send(Head.cmd, c)
     v = self.recv.wait_cmd()
     return v
+
+  def get_obj_info(self, id:int) -> CObjectInfo:
+    info = self._get_obj_info(id)
+    return CObjectInfo(info.floats)
 
   def set_action_type(self, id:int, action_type:CActionType, is_flip_horizontal:bool = False) -> None:
     c = Cmd()
@@ -482,4 +490,13 @@ class Nx:
     c = Cmd()
     c.strings.append('audioCache')
     c.strings.append('clear')
-    self.send(Head.cmd, c)     
+    self.send(Head.cmd, c)    
+
+  def image(self, key, bytes):
+    c = Cmd()
+    c.strings.append('image')
+    c.strings.append(key)
+    c.bytes.append(bytes)
+    c.ints.append(99999)
+    self.send(Head.cmd, c)
+    return self.recv.wait_ack()
