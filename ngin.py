@@ -8,7 +8,7 @@ import threading
 from zeroconf import IPVersion, ServiceBrowser, ServiceStateChange, Zeroconf, ZeroconfServiceTypes
 #import cmd
 import socket
-from command_pb2 import Head, CStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, CObject, CVisible, CPhysical, CAction, CActionType, BodyShape, BodyType, Cmd
+from command_pb2 import Head, CStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
 import struct
 import json
 import math
@@ -137,7 +137,7 @@ class Recv:
       else:
         self.handler.handle(c)
 
-class CObjectInfo:
+class NObjectInfo:
   def __init__(self, info:list[float]):
     self.x, self.y, self.width, self.height, self.angle, self.linearx, self.lineary, self.angular = info
 
@@ -196,11 +196,11 @@ class Nx:
     return c
 
   def tiles_builder(self, path:str, tile_size:float, width:float, height:float, data:list[int]):
-    c = CObject()
+    c = NObject()
     c.tid = 0
     v = c.visible       
-    #v = CVisible()
-    v.current = CActionType.tiles
+    #v = NVisual()
+    v.current = NClipType.tiles
     v.priority = 0
     v.x = 0
     v.y = 0
@@ -210,7 +210,7 @@ class Nx:
     v.scaleY = 1
     v.anchorX = 0
     v.anchorY = 0
-    a = CAction()
+    a = NClip()
     a.path = path
     a.stepTime = 200/1000
     a.x = 0
@@ -219,18 +219,18 @@ class Nx:
     a.height = tile_size
     a.indices.extend(data)
     a.repeat = False
-    a.type = CActionType.tiles
+    a.type = NClipType.tiles
     v.actions.append(a)
     return c
 
-  def obj_builder(self, id:int, info:str) -> CObject:
-    c = CObject()
+  def obj_builder(self, id:int, info:str) -> NObject:
+    c = NObject()
     c.tid = 0
     c.id = id
     c.info = info
     return c
 
-  def physical_builder(self, obj:CObject, shape:BodyShape, x:float, y:float) -> CPhysical:
+  def physical_builder(self, obj:NObject, shape:BodyShape, x:float, y:float) -> NBody:
     p = obj.physical
     p.x = x
     p.y = y
@@ -251,9 +251,9 @@ class Nx:
     p.shape = shape
     return p
 
-  def visible_builder(self, obj:CObject, actions:list[CAction]):
+  def visible_builder(self, obj:NObject, actions:list[NClip]):
     v = obj.visible
-    v.current = CActionType.idle
+    v.current = NClipType.idle
     v.priority = 0
     v.x = 0
     v.y = 0
@@ -266,8 +266,8 @@ class Nx:
     v.actions.extend(actions)
     return v
 
-  def action_builder(self, path:str, width:float, height:float, indices:list[int], type:CActionType = CActionType.idle, repeat:bool=True) -> CAction:
-    a = CAction()
+  def action_builder(self, path:str, width:float, height:float, indices:list[int], type:NClipType = NClipType.idle, repeat:bool=True) -> NClip:
+    a = NClip()
     a.path = path
     a.x = 0
     a.y = 0
@@ -277,6 +277,12 @@ class Nx:
     a.stepTime = 0.2
     a.type = type
     a.repeat = repeat
+    return a
+
+  def image_builder(self, path:str, x:float, y:float, width:float, height:float) -> NClip:
+    a = self.action_builder(path, width, height, [0])
+    a.x = x
+    a.y = y
     return a
 
   def main_loop(self):
@@ -310,11 +316,11 @@ class Nx:
     v = self.recv.wait_cmd()
     return v
 
-  def get_obj_info(self, id:int) -> CObjectInfo:
+  def get_obj_info(self, id:int) -> NObjectInfo:
     info = self._get_obj_info(id)
-    return CObjectInfo(info.floats)
+    return NObjectInfo(info.floats)
 
-  def set_action_type(self, id:int, action_type:CActionType, is_flip_horizontal:bool = False) -> None:
+  def set_action_type(self, id:int, action_type:NClipType, is_flip_horizontal:bool = False) -> None:
     c = Cmd()
     c.strings.append('actionType')
     c.ints.append(id)
@@ -330,7 +336,7 @@ class Nx:
     c.floats.append(y)
     c.floats.append(speed)
     self.send(Head.cmd, c)
-    v = self.recv.waitCmd()
+    v = self.recv.wait_cmd()
     return v
     
   def forward(self, id:int, angle:float, speed:float) -> None:

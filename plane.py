@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-from command_pb2 import Head, CStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, CObject, CVisible, CPhysical, CAction, CActionType, BodyShape, BodyType, Cmd
+from command_pb2 import Head, CStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
 import json
 import math
-from ngin import Nx, EventHandler, CObjectInfo
+from ngin import Nx, EventHandler, NObjectInfo
 
 class MyHandler(EventHandler):
   def __init__(self, nx:Nx):
@@ -36,7 +36,7 @@ class MyHandler(EventHandler):
     p = self.nx.physical_builder(o, BodyShape.rectangle, info.x-0.5 + 2*math.sin(info.angle), info.y-0.5 - 2*math.cos(info.angle))
     p.angle = info.angle
     v = self.nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/tiles_packed.png', 16, 16, [1, 2, 3])])
-    self.nx.send(Head.cobject, o, True)
+    self.nx.send(Head.object, o, True)
     self.nx.forward(new_id, 0, 20)
     self.nx.timer(new_id, 0.7)
     self.nx.audio_play('sfx/fire_1.mp3')
@@ -74,7 +74,7 @@ class MyHandler(EventHandler):
       o = self.nx.obj_builder(self.get_dynamic_id(), "fire")
       o.tid = contact.id1
       self.nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/tiles_packed.png', 16, 16, [5])])
-      self.nx.send(Head.cobject, o, True)
+      self.nx.send(Head.object, o, True)
 
   def event_handler(self, c):
     event = c.event
@@ -92,7 +92,7 @@ if __name__ == "__main__":
   tileSize = j['tilewidth']
   nx.send(Head.stage, nx.stage_builder(t['width'], t['height']), True)  
 
-  nx.send(Head.cobject, nx.tiles_builder('kenney_pixelshmup/tiles_packed.png', tileSize, t['width'], t['height'], t['data']))
+  nx.send(Head.object, nx.tiles_builder('kenney_pixelshmup/tiles_packed.png', tileSize, t['width'], t['height'], t['data']))
 
   o = nx.obj_builder(100, "hero")
   p = nx.physical_builder(o, BodyShape.circle, 11, 11)
@@ -102,7 +102,7 @@ if __name__ == "__main__":
   v = nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/ships_packed.png', 32, 32, [1])])
   v.width = 2
   v.height = 2
-  nx.send(Head.cobject, o, True)
+  nx.send(Head.object, o, True)
 
   nx.follow(100)
   nx.forward(100, 0, 5)
@@ -114,7 +114,7 @@ if __name__ == "__main__":
   v = nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/ships_packed.png', 32, 32, [10])])
   v.width = 2
   v.height = 2
-  nx.send(Head.cobject, o, True)
+  nx.send(Head.object, o, True)
 
   nx.forward(200, 0, 5)
   nx.angular(200, 1)
