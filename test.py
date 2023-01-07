@@ -7,10 +7,7 @@ import struct
 import xml.etree.ElementTree as ET
 
 def load_png_file(path_img):
-  #path_img = './generic-items-160-assets/PNG/Colored/genericItem_color_041.png'
   f = open(path_img, "rb")
-  #f.read()
-  #path_ships = 'image-genericItem_color_152.png'
   fname = path_img.split('/')[-1]
   img_data = f.read()
 
@@ -19,8 +16,6 @@ def load_png_file(path_img):
   print(width, height)
   return (fname, width, height)
 
-
-  
 
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo', 4040)
@@ -54,20 +49,22 @@ if __name__ == "__main__":
   #    print(y, x.attrib[y])
 
   o = nx.obj_builder(100, "hero")
-  p = nx.physical_builder(o, BodyShape.circle, 10, 10)
+  #p = nx.body_builder(o, BodyShape.circle, 10, 10)
   #p.angle = 1.5
   s = 4  
-  p.width = s
-  p.height = s
+  #p.width = s
+  #p.height = s
   x = float(root[ind].attrib['x'])
   y = float(root[ind].attrib['y'])
   width = float(root[ind].attrib['width'])
   height = float(root[ind].attrib['height'])
-  v = nx.visible_builder(o, [nx.image_builder(fname, x, y, width, height)])
+  v = nx.visual_builder(o, [nx.sprite_builder(fname, x, y, width, height)])
+  v.x = 10
+  v.y = 10
   v.width = s
   v.height = s*height/width
   nx.send(Head.object, o, True)
-  r = nx.linear_to(100, 15, 15, 20)
-  print(r)
+  #r = nx.linear_to(100, 15, 15, 20)
+  #print(r)
 
   nx.main_loop()

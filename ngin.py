@@ -53,27 +53,27 @@ class EventHandler:
   unexpected = 'Unexpected:'
   def handle(self, c):
     if c.head == Head.key:
-      self.key_handler(c)
+      self.on_key(c.key)
     elif c.head == Head.contact:
-      self.contact_handler(c)
+      self.on_contact(c.contact)
     elif c.head == Head.event:
-      self.event_handler(c)
+      self.on_event(c.event)
     elif c.head == Head.directional:
-      self.directional_handler(c)
+      self.on_directional(c.directional)
     elif c.head == Head.button:
-      self.button_handler(c)
+      self.on_button(c.button)
     else:
       print(self.unexpected, c)
 
-  def key_handler(self, c):
+  def on_key(self, c):
     print(self.unexpected, c)     
-  def contact_handler(self, c):
+  def on_contact(self, c):
     print(self.unexpected, c) 
-  def event_handler(self, c):  
+  def on_event(self, c):  
     print(self.unexpected, c)   
-  def directional_handler(self, c):    
+  def on_directional(self, c):    
     print(self.unexpected, c) 
-  def button_handler(self, c):
+  def on_button(self, c):
     print(self.unexpected, c) 
 
 class Recv:
@@ -198,7 +198,7 @@ class Nx:
   def tiles_builder(self, path:str, tile_size:float, width:float, height:float, data:list[int]):
     c = NObject()
     c.tid = 0
-    v = c.visible       
+    v = c.visual       
     #v = NVisual()
     v.current = NClipType.tiles
     v.priority = 0
@@ -220,7 +220,7 @@ class Nx:
     a.indices.extend(data)
     a.repeat = False
     a.type = NClipType.tiles
-    v.actions.append(a)
+    v.clips.append(a)
     return c
 
   def obj_builder(self, id:int, info:str) -> NObject:
@@ -230,8 +230,8 @@ class Nx:
     c.info = info
     return c
 
-  def physical_builder(self, obj:NObject, shape:BodyShape, x:float, y:float) -> NBody:
-    p = obj.physical
+  def body_builder(self, obj:NObject, shape:BodyShape, x:float, y:float) -> NBody:
+    p = obj.body
     p.x = x
     p.y = y
     p.width = 1
@@ -251,8 +251,8 @@ class Nx:
     p.shape = shape
     return p
 
-  def visible_builder(self, obj:NObject, actions:list[NClip]):
-    v = obj.visible
+  def visual_builder(self, obj:NObject, clips:list[NClip]):
+    v = obj.visual
     v.current = NClipType.idle
     v.priority = 0
     v.x = 0
@@ -263,10 +263,10 @@ class Nx:
     v.scaleY = 1
     v.anchorX = 0.5
     v.anchorY = 0.5
-    v.actions.extend(actions)
+    v.clips.extend(clips)
     return v
 
-  def action_builder(self, path:str, width:float, height:float, indices:list[int], type:NClipType = NClipType.idle, repeat:bool=True) -> NClip:
+  def clip_builder(self, path:str, width:float, height:float, indices:list[int], type:NClipType = NClipType.idle, repeat:bool=True) -> NClip:
     a = NClip()
     a.path = path
     a.x = 0
@@ -279,8 +279,8 @@ class Nx:
     a.repeat = repeat
     return a
 
-  def image_builder(self, path:str, x:float, y:float, width:float, height:float) -> NClip:
-    a = self.action_builder(path, width, height, [0])
+  def sprite_builder(self, path:str, x:float, y:float, width:float, height:float) -> NClip:
+    a = self.clip_builder(path, width, height, [0])
     a.x = x
     a.y = y
     return a
@@ -506,3 +506,5 @@ class Nx:
     c.ints.append(99999)
     self.send(Head.cmd, c)
     return self.recv.wait_ack()
+
+    

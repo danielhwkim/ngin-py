@@ -31,17 +31,15 @@ class MyHandler(EventHandler):
     new_id = self.get_dynamic_id()
     o = self.nx.obj_builder(new_id, "missile")
 
-    p = self.nx.physical_builder(o, BodyShape.rectangle, info.x-0.5 + 2*math.sin(info.angle), info.y-0.5 - 2*math.cos(info.angle))
+    p = self.nx.body_builder(o, BodyShape.rectangle, info.x-0.5 + 2*math.sin(info.angle), info.y-0.5 - 2*math.cos(info.angle))
     p.angle = info.angle
-    v = self.nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/tiles_packed.png', 16, 16, [1, 2, 3])])
+    v = self.nx.visual_builder(o, [nx.clip_builder('kenney_pixelshmup/tiles_packed.png', 16, 16, [1, 2, 3])])
     self.nx.send(Head.object, o, True)
     self.nx.forward(new_id, 0, 20)
     self.nx.timer(new_id, 0.7)
     self.nx.audio_play('sfx/fire_1.mp3')
 
-  def key_handler(self, c):
-    print(c)
-    c = c.key
+  def on_key(self, c):
     if c.isPressed == False:
       if c.name == 'Arrow Left':
         self.key_down_left = False
@@ -85,18 +83,16 @@ class MyHandler(EventHandler):
       elif c.name == 'W':	
         self.missile(200)        
 
-  def contact_handler(self, c):
-    contact = c.contact
+  def on_contact(self, contact):
     if contact.isEnded == False and contact.info2 == 'missile':
       self.nx.remove(contact.id2)
 
       o = self.nx.obj_builder(self.get_dynamic_id(), "fire")
       o.tid = contact.id1
-      self.nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/tiles_packed.png', 16, 16, [5])])
+      self.nx.visual_builder(o, [nx.clip_builder('kenney_pixelshmup/tiles_packed.png', 16, 16, [5])])
       self.nx.send(Head.object, o, True)
 
-  def event_handler(self, c):
-    event = c.event
+  def on_event(self, event):
     if event.info == 'missile':
       self.nx.remove(event.id)
 
@@ -116,7 +112,7 @@ if __name__ == "__main__":
   nx.send(Head.object, nx.tiles_builder('kenney_pixelshmup/tiles_packed.png', tileSize, t['width'], t['height'], t['data']))
 
   o = nx.obj_builder(10000, "wall")
-  p = nx.physical_builder(o, BodyShape.rectangle, 0, 0)
+  p = nx.body_builder(o, BodyShape.rectangle, 0, 0)
   p.type = BodyType.staticBody
   p.width = 70
   p.height = 1  
@@ -134,11 +130,11 @@ if __name__ == "__main__":
 
 
   o = nx.obj_builder(100, "hero")
-  p = nx.physical_builder(o, BodyShape.circle, 60, 30)
+  p = nx.body_builder(o, BodyShape.circle, 60, 30)
   #p.angle = 1.5
   p.width = 2
   p.height = 2
-  v = nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/ships_packed.png', 32, 32, [1])])
+  v = nx.visual_builder(o, [nx.clip_builder('kenney_pixelshmup/ships_packed.png', 32, 32, [1])])
   v.width = 2
   v.height = 2
   nx.send(Head.object, o, True)
@@ -147,11 +143,11 @@ if __name__ == "__main__":
   nx.forward(100, 0, 5)
 
   o = nx.obj_builder(200, "enemy")
-  p = nx.physical_builder(o, BodyShape.circle, 10, 10)
+  p = nx.body_builder(o, BodyShape.circle, 10, 10)
   p.angle = 3.14
   p.width = 2
   p.height = 2
-  v = nx.visible_builder(o, [nx.action_builder('kenney_pixelshmup/ships_packed.png', 32, 32, [10])])
+  v = nx.visual_builder(o, [nx.clip_builder('kenney_pixelshmup/ships_packed.png', 32, 32, [10])])
   v.width = 2
   v.height = 2
   nx.send(Head.object, o, True)
