@@ -62,6 +62,9 @@ class EventHandler:
       self.on_directional(c.directional)
     elif c.head == Head.button:
       self.on_button(c.button)
+    elif c.head == Head.tab:
+      c.tab.y = -c.tab.y
+      self.on_tab(c.tab)
     else:
       print(self.unexpected, c)
 
@@ -75,6 +78,8 @@ class EventHandler:
     print(self.unexpected, c) 
   def on_button(self, c):
     print(self.unexpected, c) 
+  def on_tab(self, c):
+    print(self.unexpected, c)
 
 class Recv:
   def __init__(self, socket:socket) -> None:
@@ -88,6 +93,16 @@ class Recv:
     r = self.event_loop()
     self.return_ack = False
     return r
+
+  def wait_ack_id(self, id):
+    self.return_ack = True
+    while True:
+      r = self.event_loop()
+      if r == id:
+        break;
+      print('Unexpected Ack:', r)
+    self.return_ack = False
+    return r    
 
   def wait_cmd(self):
     self.return_cmd = True
@@ -180,6 +195,15 @@ class Nx:
     self.socket.sendall(head_bytes + len_bytes + bs)
     if(ack):
       return self.recv.wait_ack()
+
+  def send_obj(self, data, ack:bool = False):
+    bs = data.SerializeToString()
+    head_bytes = struct.pack('<L', Head.object)  
+    len_bytes = struct.pack('<L', len(bs))
+    #print(f'size:4 + {len(bs)}')
+    self.socket.sendall(head_bytes + len_bytes + bs)
+    if(ack):
+      return self.recv.wait_ack_id(data.id)      
 
   def stage_builder(self, width:float, height:float):
     c = CStageInfo()
@@ -507,4 +531,46 @@ class Nx:
     self.send(Head.cmd, c)
     return self.recv.wait_ack()
 
-    
+  def translate(self, id:int, x:float, y:float, time:float, type:str = 'easeInOut', ack:bool=False):
+    return self.transform(id, {'translate':(x,y)}, time, type, ack)
+
+  def transform(self, id:int, transform:dict, time:float, type:str = 'easeInOut', ack:bool=False):
+    c = Cmd()
+    c.strings.append('transform')
+    c.strings.append(type)    
+    c.ints.append(id)
+    c.ints.append(1 if ack else 0)
+
+    c.floats.append(time)  
+
+    if 'translate' in transform.keys():
+      c.ints.append(1)
+      t = transform['translate']
+      c.floats.append(t[0])
+      c.floats.append(t[1])      
+    else:
+      c.ints.append(0)
+      c.floats.append(0)
+      c.floats.append(0)
+
+    if 'scale' in transform.keys():
+      c.ints.append(1)
+      s = transform['scale']
+      c.floats.append(s[0])
+      c.floats.append(s[1])           
+    else:
+      c.ints.append(0)
+      c.floats.append(0)
+      c.floats.append(0)
+
+    if 'angle' in transform.keys():
+      c.ints.append(1)
+      a = transform['angle']
+      c.floats.append(a)        
+    else:
+      c.ints.append(0)
+      c.floats.append(0)         
+
+    self.send(Head.cmd, c)
+    if ack:
+      return self.recv.wait_ack_id(id)      
