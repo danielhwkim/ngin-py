@@ -8,7 +8,7 @@ import threading
 from zeroconf import IPVersion, ServiceBrowser, ServiceStateChange, Zeroconf, ZeroconfServiceTypes
 #import cmd
 import socket
-from command_pb2 import Head, CStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
+from command_pb2 import Head, NStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
 import struct
 import json
 import math
@@ -53,18 +53,18 @@ class EventHandler:
   unexpected = 'Unexpected:'
   def handle(self, c):
     if c.head == Head.key:
-      self.on_key(c.key)
+      self.on_key(c)
     elif c.head == Head.contact:
-      self.on_contact(c.contact)
+      self.on_contact(c)
     elif c.head == Head.event:
-      self.on_event(c.event)
+      self.on_event(c)
     elif c.head == Head.directional:
-      self.on_directional(c.directional)
+      self.on_directional(c)
     elif c.head == Head.button:
-      self.on_button(c.button)
+      self.on_button(c)
     elif c.head == Head.tap:
-      c.tap.y = -c.tap.y
-      self.on_tap(c.tap)
+      c.floats[1] = -c.floats[1]
+      self.on_tap(c)
     else:
       print(self.unexpected, c)
 
@@ -136,14 +136,12 @@ class Recv:
       c = CmdInfo()      
       c.ParseFromString(data)
       if c.head == Head.ack:
-        c = c.ack
         if self.return_ack:
           #print(f'ACK:{c.code} {c.info}')          
-          return c.code
+          return c.ints[0]
         else:
-          print(f'Unexpected: ACK - {c.code} {c.info}')
+          print(f'Unexpected: ACK - {c.ints[0]}')
       elif c.head == Head.cmd:
-        c = c.cmd
         if self.return_cmd:
           #print(f'Cmd:{c}')          
           return c
@@ -206,7 +204,7 @@ class Nx:
       return self.recv.wait_ack_id(data.id)      
 
   def stage_builder(self, width:float, height:float):
-    c = CStageInfo()
+    c = NStageInfo()
     c.background = 'Blue'
     c.gravityX = 0
     c.gravityY = 0

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from command_pb2 import Head, CStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
+from command_pb2 import Head, NStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
 import json
 import math
 from ngin import Nx, EventHandler, NObjectInfo
@@ -42,41 +42,61 @@ class MyHandler(EventHandler):
     self.nx.audio_play('sfx/fire_1.mp3')
 
   def on_key(self, c):
-    if c.isPressed == False:
-      if c.name == 'Arrow Left':
+    name = c.strings[0]
+    isPressed = c.ints[0] == 1
+
+    if isPressed == False:
+      if name == 'Arrow Left':
         self.key_down_left = False
         if self.key_down_right:
           self.go_right()
         else:
           self.stop()	
-      elif c.name == 'Arrow Right':
+      elif name == 'Arrow Right':
         self.key_down_right = False
         if self.key_down_left:
           self.go_left()
         else:
           self.stop()
     else:
-      if c.name == 'Arrow Left':
+      if name == 'Arrow Left':
         self.key_down_left = True         
         self.go_left()
-      elif c.name == 'Arrow Right':
+      elif name == 'Arrow Right':
         self.key_down_right = True            
         self.go_right()
-      elif c.name == 'Arrow Up':	
+      elif name == 'Arrow Up':	
         self.missile()
 
-  def on_contact(self, contact):
-    if contact.isEnded == False and contact.info2 == 'missile':
-      self.nx.remove(contact.id2)
+  def on_contact(self, c):
+    isEnded = c.ints[0] == 1
+    info1 = c.strings[0]    
+    info2 = c.strings[1]
+    id1 = c.ints[1]    
+    id2 = c.ints[2]
+    x = c.floats[0]
+    y = c.floats[1]
+    x1 = c.floats[2]
+    y1 = c.floats[3]
+    x2 = c.floats[4]
+    y2 = c.floats[5]                    
 
+    if isEnded == False and info2 == 'missile':
+      self.nx.remove(id2)
       o = self.nx.obj_builder(self.get_dynamic_id(), "fire")
-      o.tid = contact.id1
+      o.tid = id1
       self.nx.visual_builder(o, [nx.clip_builder('kenney_pixelshmup/tiles_packed.png', 16, 16, [5])])
       self.nx.send(Head.object, o, True)
 
-  def on_event(self, event):
-    if event.info == 'missile':
-      self.nx.remove(event.id)
+  def on_event(self, c):
+    completed = c.ints[0]
+    id = c.ints[1]
+    info = c.strings[0]
+    x = c.floats[0]
+    y = c.floats[1]
+
+    if info == 'missile':
+      self.nx.remove(id)
 
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo', 4040)
@@ -99,7 +119,7 @@ if __name__ == "__main__":
   v = nx.visual_builder(o, [nx.clip_builder('kenney_pixelshmup/ships_packed.png', 32, 32, [1])])
   v.width = 2
   v.height = 2
-  nx.send(Head.object, o, True)
+  nx.send_obj(o, True)
 
   nx.follow(100)
   nx.forward(100, 0, 5)
@@ -111,7 +131,7 @@ if __name__ == "__main__":
   v = nx.visual_builder(o, [nx.clip_builder('kenney_pixelshmup/ships_packed.png', 32, 32, [10])])
   v.width = 2
   v.height = 2
-  nx.send(Head.object, o, True)
+  nx.send_obj(o, True)
 
   nx.forward(200, 0, 5)
   nx.angular(200, 1)

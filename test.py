@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from command_pb2 import Head, CStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
+from command_pb2 import Head, NStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
 import json
 import math
 from ngin import Nx, EventHandler, NObjectInfo
@@ -21,7 +21,7 @@ class MyHandler(EventHandler):
     self.nx = nx     
   
   def on_tap(self, tap):
-    nx.translate(100, tap.x, tap.y, 0.1, 'easeInOut', True)
+    nx.translate(100, tap.floats[0], tap.floats[1], 0.1, 'easeInOut', True)
 
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo', 4040)
