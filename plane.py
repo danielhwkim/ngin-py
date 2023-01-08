@@ -41,62 +41,41 @@ class MyHandler(EventHandler):
     self.nx.timer(new_id, 0.7)
     self.nx.audio_play('sfx/fire_1.mp3')
 
-  def on_key(self, c):
-    name = c.strings[0]
-    isPressed = c.ints[0] == 1
-
-    if isPressed == False:
-      if name == 'Arrow Left':
+  def on_key(self, key):
+    if key.is_pressed == False:
+      if key.name == 'Arrow Left':
         self.key_down_left = False
         if self.key_down_right:
           self.go_right()
         else:
           self.stop()	
-      elif name == 'Arrow Right':
+      elif key.name == 'Arrow Right':
         self.key_down_right = False
         if self.key_down_left:
           self.go_left()
         else:
           self.stop()
     else:
-      if name == 'Arrow Left':
+      if key.name == 'Arrow Left':
         self.key_down_left = True         
         self.go_left()
-      elif name == 'Arrow Right':
+      elif key.name == 'Arrow Right':
         self.key_down_right = True            
         self.go_right()
-      elif name == 'Arrow Up':	
+      elif key.name == 'Arrow Up':	
         self.missile()
 
-  def on_contact(self, c):
-    isEnded = c.ints[0] == 1
-    info1 = c.strings[0]    
-    info2 = c.strings[1]
-    id1 = c.ints[1]    
-    id2 = c.ints[2]
-    x = c.floats[0]
-    y = c.floats[1]
-    x1 = c.floats[2]
-    y1 = c.floats[3]
-    x2 = c.floats[4]
-    y2 = c.floats[5]                    
-
-    if isEnded == False and info2 == 'missile':
-      self.nx.remove(id2)
+  def on_contact(self, contact):               
+    if contact.is_ended == False and contact.info2 == 'missile':
+      self.nx.remove(contact.id2)
       o = self.nx.obj_builder(self.get_dynamic_id(), "fire")
-      o.tid = id1
+      o.tid = contact.id1
       self.nx.visual_builder(o, [nx.clip_builder('kenney_pixelshmup/tiles_packed.png', 16, 16, [5])])
       self.nx.send(Head.object, o, True)
 
-  def on_event(self, c):
-    completed = c.ints[0]
-    id = c.ints[1]
-    info = c.strings[0]
-    x = c.floats[0]
-    y = c.floats[1]
-
-    if info == 'missile':
-      self.nx.remove(id)
+  def on_event(self, event):
+    if event.info == 'missile':
+      self.nx.remove(event.id)
 
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo', 4040)

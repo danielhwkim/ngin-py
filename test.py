@@ -21,7 +21,7 @@ class MyHandler(EventHandler):
     self.nx = nx     
   
   def on_tap(self, tap):
-    nx.translate(100, tap.floats[0], tap.floats[1], 0.1, 'easeInOut', True)
+    nx.translate(100, tap.x, tap.y, 0.1, 'easeInOut', True)
 
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo', 4040)

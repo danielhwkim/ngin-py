@@ -49,22 +49,57 @@ class ServiceListener:
     #  print("Service %s updated, service info: %s" % (name, info))
     pass
 
+class ContactInfo:
+  def __init__(self, c):
+    self.is_ended = c.ints[1] == 1
+    self.info1 = c.strings[0]    
+    self.info2 = c.strings[1]
+    self.id1 = c.ints[2]    
+    self.id2 = c.ints[3]
+    self.x = c.floats[0]
+    self.y = c.floats[1]
+    self.x1 = c.floats[2]
+    self.y1 = c.floats[3]
+    self.x2 = c.floats[4]
+    self.y2 = c.floats[5]
+
+class EventInfo:
+  def __init__(self, c):
+    self.completed = c.ints[1] == 1
+    self.id = c.ints[2]
+    self.info = c.strings[0]
+    self.x = c.floats[0]
+    self.y = c.floats[1]
+
+class KeyInfo:
+  def __init__(self, c):
+    self.name = c.strings[0]
+    self.is_pressed = c.ints[1] == 1
+
+class TapInfo:
+  def __init__(self, c):
+    self.info = c.ints[1]
+    self.event = c.ints[2]
+    self.x = c.floats[0]
+    self.y = -c.floats[1]      
+
+
 class EventHandler:
   unexpected = 'Unexpected:'
   def handle(self, c):
-    if c.head == Head.key:
-      self.on_key(c)
-    elif c.head == Head.contact:
-      self.on_contact(c)
-    elif c.head == Head.event:
-      self.on_event(c)
-    elif c.head == Head.directional:
+    head = c.ints[0]
+    if head == Head.key:
+      self.on_key(KeyInfo(c))
+    elif head == Head.contact:
+      self.on_contact(ContactInfo(c))
+    elif head == Head.event:
+      self.on_event(EventInfo(c))
+    elif head == Head.directional:
       self.on_directional(c)
-    elif c.head == Head.button:
+    elif head == Head.button:
       self.on_button(c)
-    elif c.head == Head.tap:
-      c.floats[1] = -c.floats[1]
-      self.on_tap(c)
+    elif head == Head.tap:
+      self.on_tap(TapInfo(c))
     else:
       print(self.unexpected, c)
 
@@ -99,7 +134,7 @@ class Recv:
     while True:
       r = self.event_loop()
       if r == id:
-        break;
+        break
       print('Unexpected Ack:', r)
     self.return_ack = False
     return r    
@@ -135,13 +170,14 @@ class Recv:
 
       c = CmdInfo()      
       c.ParseFromString(data)
-      if c.head == Head.ack:
+      head = c.ints[0]
+      if head == Head.ack:
         if self.return_ack:
           #print(f'ACK:{c.code} {c.info}')          
-          return c.ints[0]
+          return c.ints[1]
         else:
           print(f'Unexpected: ACK - {c.ints[0]}')
-      elif c.head == Head.cmd:
+      elif head == Head.cmd:
         if self.return_cmd:
           #print(f'Cmd:{c}')          
           return c
