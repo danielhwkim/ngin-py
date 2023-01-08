@@ -62,9 +62,9 @@ class EventHandler:
       self.on_directional(c.directional)
     elif c.head == Head.button:
       self.on_button(c.button)
-    elif c.head == Head.tab:
-      c.tab.y = -c.tab.y
-      self.on_tab(c.tab)
+    elif c.head == Head.tap:
+      c.tap.y = -c.tap.y
+      self.on_tap(c.tap)
     else:
       print(self.unexpected, c)
 
@@ -78,7 +78,7 @@ class EventHandler:
     print(self.unexpected, c) 
   def on_button(self, c):
     print(self.unexpected, c) 
-  def on_tab(self, c):
+  def on_tap(self, c):
     print(self.unexpected, c)
 
 class Recv:
@@ -529,7 +529,7 @@ class Nx:
     c.bytes.append(bytes)
     c.ints.append(99999)
     self.send(Head.cmd, c)
-    return self.recv.wait_ack()
+    return self.recv.wait_ack_id(99999)
 
   def translate(self, id:int, x:float, y:float, time:float, type:str = 'easeInOut', ack:bool=False):
     return self.transform(id, {'translate':(x,y)}, time, type, ack)

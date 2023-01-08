@@ -16,10 +16,16 @@ def load_png_file(path_img):
   print(width, height)
   return (fname, width, height)
 
+class MyHandler(EventHandler):
+  def __init__(self, nx:Nx):
+    self.nx = nx     
+  
+  def on_tap(self, tap):
+    nx.translate(100, tap.x, tap.y, 0.1, 'easeInOut', True)
 
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo', 4040)
-  nx.set_event_handler(EventHandler())
+  nx.set_event_handler(MyHandler(nx))
   f = open('./data/planes0.tmj', "r")
   j = json.loads(f.read())
   f.close()
