@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from command_pb2 import Head, NStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
+from command_pb2 import Head, NStageInfo, JoystickDirectionals, TouchMotion, NEvent, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
 import json
 import math
 from ngin import Nx, EventHandler, NObjectInfo
@@ -21,7 +21,8 @@ class MyHandler(EventHandler):
     self.nx = nx     
   
   def on_tap(self, tap):
-    nx.translate(100, tap.x, tap.y, 0.1, 'easeInOut', True)
+    print(tap.x, tap.y)
+    nx.translate(100, tap.x, tap.y, 0, 'easeInOut', True)
 
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo', 4040)
@@ -33,12 +34,14 @@ if __name__ == "__main__":
   tileSize = j['tilewidth']
   stage = nx.stage_builder(30, 20)
   stage.debug = True
+  stage.tap = TouchMotion.ALL
+  stage.tapMinMoveDistance = 0.5
   nx.send(Head.stage, stage, True)  
 
   path_ships = 'kenney_pixelshmup/ships_packed.png'
 
-  nx.send(Head.object, nx.tiles_builder('kenney_pixelshmup/tiles_packed.png', tileSize, t['width'], t['height'], t['data']))
-  #print(r)  
+  nx.send_obj(nx.tiles_builder('kenney_pixelshmup/tiles_packed.png', tileSize, t['width'], t['height'], t['data']))
+  #print(r)
 
   #path_img = './generic-items-160-assets/PNG/Colored/genericItem_color_041.png'
   pngFile = './generic-items-160-assets/Spritesheet/genericItems_spritesheet_colored.png'

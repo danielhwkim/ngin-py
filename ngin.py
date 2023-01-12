@@ -8,10 +8,11 @@ import threading
 from zeroconf import IPVersion, ServiceBrowser, ServiceStateChange, Zeroconf, ZeroconfServiceTypes
 #import cmd
 import socket
-from command_pb2 import Head, NStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
+from command_pb2 import Head, NStageInfo, JoystickDirectionals, TouchMotion, NEvent, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
 import struct
 import json
 import math
+from collections import deque
 
 class ServiceListener:
   def __init__(self, event_result_available, verbose) -> None:
@@ -65,11 +66,22 @@ class ContactInfo:
 
 class EventInfo:
   def __init__(self, c):
-    self.completed = c.ints[1] == 1
     self.id = c.ints[2]
     self.info = c.strings[0]
-    self.x = c.floats[0]
-    self.y = c.floats[1]
+    if self.info == 'distance':
+      self.on = c.ints[1] == 1
+      self.distance = c.floats[0]
+      self.id2 = c.ints[3]
+    else:
+      self.completed = c.ints[1] == 1      
+      self.x = c.floats[0]
+      self.y = c.floats[1]
+
+  def __str__(self):
+    if self.info == 'distance':
+      return "Distance {on} for {id1} and {id2}".format(on = "on" if self.on else "off", id1 = self.id, id2 = self.id2)
+    else:   
+      return "EventInfo {event} - {completed} for {id1} ({x}, {y})".format(event = self.info, completed = "completed" if self.completed else "not completed", id1 = self.id, x = self.x, y = self.y)
 
 class KeyInfo:
   def __init__(self, c):
@@ -122,6 +134,7 @@ class Recv:
     self.socket = socket
     self.return_ack = False
     self.return_cmd = False
+    self.q = deque()
 
   def wait_ack(self):
     self.return_ack = True
@@ -146,7 +159,10 @@ class Recv:
     return r   
 
   def event_loop(self) -> None:
-    while True:    
+    while True:
+      if not self.return_ack and not self.return_cmd and  len(self.q) != 0:
+        self.handler.handle(self.q.popleft())
+        continue
       if self.remaining < 4:
         if self.remaining == 0:
           self.buff = self.socket.recv(1024)
@@ -168,21 +184,24 @@ class Recv:
       self.index +=size
       self.remaining -= size
 
-      c = CmdInfo()      
+      c = NEvent()      
       c.ParseFromString(data)
       head = c.ints[0]
-      if head == Head.ack:
-        if self.return_ack:
-          #print(f'ACK:{c.code} {c.info}')          
+
+      if self.return_ack:
+        if head == Head.ack:       
           return c.ints[1]
-        else:
-          print(f'Unexpected: ACK - {c.ints[0]}')
-      elif head == Head.cmd:
-        if self.return_cmd:
-          #print(f'Cmd:{c}')          
-          return c
-        else:
+        elif head == Head.cmd:
           print(f'Unexpected: Cmd - {c}')
+        else:
+          self.q.append(c)
+      elif self.return_cmd:
+        if head == Head.cmd:    
+          return c
+        elif head == Head.ack:
+          print(f'Unexpected: Ack - {c}')        
+        else:
+          self.q.append(c)
       else:
         self.handler.handle(c)
 
@@ -249,8 +268,11 @@ class Nx:
     c.debug = False
     c.joystickDirectionals = JoystickDirectionals.none
     c.joystickPrecision = 3
-    c.button1 = ActionEvent.DOWN
-    c.button2 = ActionEvent.DOWN
+    c.button1 = TouchMotion.DOWN
+    c.button2 = TouchMotion.DOWN
+    c.tap = TouchMotion.DOWN
+    c.tapMinMoveDistance = 0
+    c.distanceTrackingInternal = 0
     return c
 
   def tiles_builder(self, path:str, tile_size:float, width:float, height:float, data:list[int]):
@@ -556,7 +578,7 @@ class Nx:
     c.strings.append('clear')
     self.send(Head.cmd, c)    
 
-  def image(self, key, bytes):
+  def image(self, key:str, bytes:bytes):
     c = Cmd()
     c.strings.append('image')
     c.strings.append(key)
@@ -564,6 +586,15 @@ class Nx:
     c.ints.append(99999)
     self.send(Head.cmd, c)
     return self.recv.wait_ack_id(99999)
+
+  def distance_tracking(self, id1:int, id2:int, dist:float):
+    c = Cmd()
+    c.strings.append('distance')
+    c.ints.append(id1)
+    c.ints.append(id2)
+    c.floats.append(dist)    
+    self.send(Head.cmd, c)
+
 
   def translate(self, id:int, x:float, y:float, time:float, type:str = 'easeInOut', ack:bool=False):
     return self.transform(id, {'translate':(x,y)}, time, type, ack)

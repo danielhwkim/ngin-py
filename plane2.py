@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from command_pb2 import Head, NStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
+from command_pb2 import Head, NStageInfo, JoystickDirectionals, TouchMotion, NEvent, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
 import json
 import math
 from ngin import Nx, EventHandler, NObjectInfo

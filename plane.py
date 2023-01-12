@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from command_pb2 import Head, NStageInfo, JoystickDirectionals, ActionEvent, CmdInfo, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
+from command_pb2 import Head, NStageInfo, JoystickDirectionals, TouchMotion, NEvent, NObject, NVisual, NBody, NClip, NClipType, BodyShape, BodyType, Cmd
 import json
 import math
 from ngin import Nx, EventHandler, NObjectInfo
@@ -76,6 +76,8 @@ class MyHandler(EventHandler):
   def on_event(self, event):
     if event.info == 'missile':
       self.nx.remove(event.id)
+    else:
+      print(event)
 
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo', 4040)
@@ -114,5 +116,7 @@ if __name__ == "__main__":
 
   nx.forward(200, 0, 5)
   nx.angular(200, 1)
+
+  nx.distance_tracking(100, 200, 10)
 
   nx.main_loop()
