@@ -93,9 +93,14 @@ class TapInfo:
     self.info = c.ints[1]
     self.event = c.ints[2]
     self.x = c.floats[0]
-    self.y = -c.floats[1]      
+    self.y = -c.floats[1]    
 
-
+class ErrorInfo:  
+  def __init__(self, c):
+    self.name = c.strings[0]
+    self.code = c.ints[1]
+  def __str__(self):
+    return "Error {name} code:{code}".format(name=self.name, code=self.code)
 class EventHandler:
   unexpected = 'Unexpected:'
   def handle(self, c):
@@ -112,6 +117,10 @@ class EventHandler:
       self.on_button(c)
     elif head == Head.tap:
       self.on_tap(TapInfo(c))
+    elif head == Head.error:
+      self.on_error(ErrorInfo(c))
+    elif head == Head.relay:
+      self.on_relay(c)
     else:
       print(self.unexpected, c)
 
@@ -127,6 +136,10 @@ class EventHandler:
     print(self.unexpected, c) 
   def on_tap(self, c):
     print(self.unexpected, c)
+  def on_error(self, c):
+    print(self.unexpected, c)    
+  def on_relay(self, c):
+    print(self.unexpected, c)       
 
 class Recv:
   def __init__(self, socket:socket) -> None:
@@ -135,6 +148,7 @@ class Recv:
     self.return_ack = False
     self.return_cmd = False
     self.q = deque()
+    self.handler = EventHandler()
 
   def wait_ack(self):
     self.return_ack = True
@@ -188,20 +202,18 @@ class Recv:
       c.ParseFromString(data)
       head = c.ints[0]
 
-      if self.return_ack:
-        if head == Head.ack:       
+      if head == Head.ack:
+        if self.return_ack:
           return c.ints[1]
-        elif head == Head.cmd:
-          print(f'Unexpected: Cmd - {c}')
         else:
-          self.q.append(c)
-      elif self.return_cmd:
-        if head == Head.cmd:    
+          print(f'Unexpected: Ack - {c}')
+      elif head == Head.cmd:
+        if self.return_cmd:
           return c
-        elif head == Head.ack:
-          print(f'Unexpected: Ack - {c}')        
         else:
-          self.q.append(c)
+          print(f'Unexpected: Cmd - {c}')
+      elif self.return_ack or self.return_cmd:
+        self.q.append(c)
       else:
         self.handler.handle(c)
 
@@ -211,7 +223,7 @@ class NObjectInfo:
 
 
 class Nx:
-  def __init__(self, host:str, port:int, verbose:bool = False):
+  def __init__(self, host:str, port:int = 4040, verbose:bool = False):
     self.host = host
     self.port = port
 
@@ -250,17 +262,14 @@ class Nx:
       return self.recv.wait_ack()
 
   def send_obj(self, data, ack:bool = False):
-    bs = data.SerializeToString()
-    head_bytes = struct.pack('<L', Head.object)  
-    len_bytes = struct.pack('<L', len(bs))
-    #print(f'size:4 + {len(bs)}')
-    self.socket.sendall(head_bytes + len_bytes + bs)
-    if(ack):
-      return self.recv.wait_ack_id(data.id)      
+    return self.send(Head.object, data, ack)
+
+  def send_stage_info(self, data):
+    return self.send(Head.stage, data, True)
 
   def stage_builder(self, width:float, height:float):
     c = NStageInfo()
-    c.background = 'Blue'
+    c.background = ''
     c.gravityX = 0
     c.gravityY = 0
     c.width = width
@@ -639,3 +648,62 @@ class Nx:
     self.send(Head.cmd, c)
     if ack:
       return self.recv.wait_ack_id(id)      
+
+  def hint(self, hint:str) -> None:
+    c = Cmd()
+    c.strings.append('hint')
+    c.strings.append(hint)
+    self.send(Head.cmd, c)
+
+  def svg(self, id:int, svg:str, x:float, y:float, width:float, height:float):
+    #c = Cmd()
+    #c.strings.append('svg')
+    #c.strings.append(svg)
+    #c.ints.append(id)
+    #c.floats.append(x)
+    #c.floats.append(y)
+    #c.floats.append(width)
+    #c.floats.append(height)
+    #self.send(Head.cmd, c)
+    a = NClip()
+    a.path = svg
+    a.x = 0
+    a.y = 0
+    a.width = width
+    a.height = height
+    a.indices.extend([])
+    a.stepTime = 0.2
+    a.type = NClipType.svg
+    a.repeat = True
+
+    c = NObject()
+    c.tid = 0
+    c.id = id
+
+    v = c.visual
+    v.current = NClipType.svg
+    v.priority = 0
+    v.x = x
+    v.y = y
+    v.width = width
+    v.height = height
+    v.scaleX = 1
+    v.scaleY = 1
+    v.anchorX = 0
+    v.anchorY = 0
+    v.clips.extend([a])
+    self.send(Head.object, c)
+
+
+class Nc:
+  def __init__(self, host:str, port:int = 4041, verbose:bool = False):
+    self.host = host
+    self.port = port
+
+    HOST = host
+    if host[3] != '.':
+      HOST = self.find_ip(f'_{self.host}._tcp.local.', verbose)  # The server's hostname or IP address
+    self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    self.socket.connect((HOST, self.port))
+    self.recv = Recv(self.socket)

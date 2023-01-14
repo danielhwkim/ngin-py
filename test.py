@@ -22,10 +22,10 @@ class MyHandler(EventHandler):
   
   def on_tap(self, tap):
     print(tap.x, tap.y)
-    nx.translate(100, tap.x, tap.y, 0, 'easeInOut', True)
+    nx.translate(100, tap.x, tap.y, 0.25, 'linear', False)
 
 if __name__ == "__main__":
-  nx = Nx('bonsoirdemo', 4040)
+  nx = Nx('bonsoirdemo')
   nx.set_event_handler(MyHandler(nx))
   f = open('./data/planes0.tmj', "r")
   j = json.loads(f.read())
@@ -36,7 +36,7 @@ if __name__ == "__main__":
   stage.debug = True
   stage.tap = TouchMotion.ALL
   stage.tapMinMoveDistance = 0.5
-  nx.send(Head.stage, stage, True)  
+  nx.send_stage_info(stage)
 
   path_ships = 'kenney_pixelshmup/ships_packed.png'
 
