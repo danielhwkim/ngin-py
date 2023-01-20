@@ -48,63 +48,104 @@ From **Highest** to **Lowest** precedence:\n\
 \n\
 "
 
-
-class Util:
-  def __init__(self, nx) -> None:
+class CountDown:
+  def __init__(self, nx, width, height) -> None:
     self.nx = nx
+    print(width, height)
+    self.fillopacity = 0.5
+    self.textsize = 5
+    self.width = width
+    self.height = height
+    self.info = 'CountDown'
 
-  def draw_svg_grid(self, x, y, func):
-    unit = 100
-    ori = '<svg viewBox="0 0 {x} {y}>\n'.format(x=unit*x, y=unit*y)
-    padding = 5
-    for i in range(x):
-      for j in range(y):
-        if func(i,j):
-          ori += '<rect x="{x}" y="{y}" width="{width}" height="{height}" stroke="#777" fill="none" stroke-width="4" />\n'.format(x=padding + unit*i, y=padding + unit*j, width=unit - padding*2, height=unit - padding*2)
-          ori += '<text fill="#777" x="{x}" y="{y}" font-size="{size}" font-family="Roboto" text-anchor="middle" >{i}:{j}</text>\n'.format(x=unit/2 + unit*i, y=unit*0.6 + unit*j, size=unit/3, i=i,j=j)
-        else:
-          ori += '<rect x="{x}" y="{y}" width="{width}" height="{height}" stroke="#777" fill="#777" stroke-width="4" />\n'.format(x=padding + unit*i, y=padding + unit*j, width=unit - padding*2, height=unit - padding*2)
-    ori += '</svg>'
-    return ori
+  def animate(self):
+    self.nx.svg(100+self.num, draw_svg_text_full_screen(self.width, self.height, "{num}".format(num=self.num), self.textsize, self.fillopacity), 0, 0, self.width, self.height, self.info)
+    self.nx.translate(100+self.num, self.width, 0, self.time)
 
-  def draw_svg_text_full_screen(self, x, y, text, size=1, fill="#111", fillopacity=1):
+    self.num -= 1
+    self.nx.svg(100+self.num, draw_svg_text_full_screen(self.width, self.height, "{num}".format(num=self.num), self.textsize, self.fillopacity), -self.width, 0, self.width, self.height, self.info)
+    self.nx.translate(100+self.num, 0, 0, self.time, "easeInOut", False, True)
+
+  def update(self):
+    if self.num > 0:
+      self.nx.remove(100+self.num)
+      self.animate()
+    else:
+      self.nx.remove(100+self.num)
+
+  def run(self, num, time):
+    self.num = num
+    self.time = time
+    self.animate()
+
+
+def draw_svg_grid(x, y, func):
+  unit = 100
+  ori = '<svg viewBox="0 0 {x} {y}">\n'.format(x=unit*x, y=unit*y)
+  padding = 5
+  for i in range(x):
+    for j in range(y):
+      if func(i,j):
+        ori += '<rect x="{x}" y="{y}" width="{width}" height="{height}" stroke="#777" fill="none" stroke-width="4"/>\n'.format(x=padding + unit*i, y=padding + unit*j, width=unit - padding*2, height=unit - padding*2)
+        ori += '<text fill="#777" x="{x}" y="{y}" font-size="{size}" font-family="Roboto" text-anchor="middle" >{i}:{j}</text>\n'.format(x=unit/2 + unit*i, y=unit*0.6 + unit*j, size=unit/3, i=i,j=j)
+      else:
+        ori += '<rect x="{x}" y="{y}" width="{width}" height="{height}" stroke="#777" fill="#777" stroke-width="4"/>\n'.format(x=padding + unit*i, y=padding + unit*j, width=unit - padding*2, height=unit - padding*2)
+  ori += '</svg>'
+  return ori
+
+def draw_svg_text_full_screen(x, y, text, size=1, fill="#111", fillopacity=1):
+  unit = 100
+  padding = 5  
+  ori = '<svg viewBox="0 0 {x} {y}">\n'.format(x=x*unit, y=y*unit)
+  #ori += '<rect x="{x}" y="{y}" width="{width}" height="{height}" stroke="#777" fill="#777" stroke-width="4"/>\n'.format(x=padding, y=padding, width=x*unit - padding*2, height=y*unit - padding*2)
+  ori += '<text fill="{fill}" fill-opacity="{fillopacity}" x="{x}" y="{y}" font-size="{size}" font-family="Roboto" text-anchor="middle">{text}</text>\n'.format(fill=fill, fillopacity=fillopacity, x=x*unit/2, y=y*unit*0.65, size=unit*size,text=text)
+  ori += '</svg>'
+  return ori
+
+def draw_svg_text(x, y, text):
     unit = 100    
     ori = '<svg viewBox="0 0 {x} {y}">\n'.format(x=x*unit, y=y*unit)
-    ori += '<text fill="{fill}" fill-opacity="{fillopacity}" x="{x}" y="{y}" font-size="{size}" font-family="Roboto" text-anchor="middle" >{text}</text>\n'.format(fill=fill, fillopacity=fillopacity, x=x*unit/2, y=y*unit/2 + unit*size*0.35, size=unit*size,text=text)
+    ori += '<text fill="#888" x="{x}" y="{y}" font-size="{unit}" font-family="Roboto" text-anchor="middle">{text}</text>\n'.format(x=x, y=y + unit, unit=unit, text=text)
+    #ori += '<rect x="{x}" y="{y}" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)/>\n'.format(x=x, y=y + unit)      
     ori += '</svg>'
     return ori
 
-  def count_down(self, width, height, num, time):
-    print(width, height, num, time)
-    fillopacity = 0.5
-    textsize = 5
-    self.nx.svg(100+num, self.drawSvgTextFullScreen(width, height, "{num}".format(num=num), textsize, fillopacity), 0, 0, width, height)
+def test01(handler, width, height, margin, func):
+  nx = handler.nx
+  aset = set()
+  nothing_to_delete = 0
 
-    while num > 0:
-      self.nx.translate(100+num, width, 0, time)
-      num -=1
-      self.nx.svg(100+num, self.drawSvgTextFullScreen(width, height, "{num}".format(num=num), textsize, fillopacity), 0, 0, width, height)
-      self.nx.translate(100+num, width, 0, time, "ease", True)
-      value = self.nx.translate(100+num, 0, 0, time, True)
+  for i in range(width):
+    for j in range(height):
+      if func(i,j):
+        aset.add(i*100+j)
+  #nx.main_loop() 
+  nx.svg(100, draw_svg_grid(width, height, func), 0, 0, width, height)
+  handler.counter.run(3, 1)
+  c = nx.recv.wait_relay()
+  print(c)
 
-      print('ack:', value)
-  
-      self.nx.remove(100+num+1)
-      value = self.nx.translate(100+num, width, 0, time, True)
+  handler.counter.run(3, 1)
+  #countDown(width, height, 3, 1)
 
-      print('ack:', value)
-      self.nx.remove(100+num)
+  result = True
+  if len(aset) == 0 and nothing_to_delete == 0:
+    message = "SUCCESS!"
+    size = 2
+    fill = "blue"
+    fillopacity = 1
+  else:
+    message = "FAILURE!"
+    size = 2
+    fill = "red"
+    fillopacity = 1
+    result = False
 
-      print('end')
+    nx.svg(10000, draw_svg_text_full_screen(width+margin, height, message, size, fill, fillopacity), 0, 0, width+margin, height)
 
-  def draw_svg_text(self, x, y, text):
-      unit = 100    
-      ori = '<svg viewBox="0 0 {x} {y}">\n'.format(x=x*unit, y=y*100)
-      ori += '<text fill="#888" x="{x}" y="{y}" font-size="{unit}" font-family="Roboto" text-anchor="middle">{text}</text>\n'.format(x=x, y=y + unit, unit=unit, text=text)
-      #ori += '<rect x="{x}" y="{y}" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)/>\n'.format(x=x, y=y + unit)      
-      ori += '</svg>'
-      return ori
-
+    #countDown(width, height, 3, 1)
+    nx.removeAll()
+  return [result, len(aset) + nothing_to_delete]
 
 class Stopwatch:
   def __init__(self, nx, oid, rect):
@@ -114,8 +155,7 @@ class Stopwatch:
     self.h = rect[3]
     self.oid = oid
     self.num = 0
-    self.running = False      
-    self.util = Util(nx)  
+    self.running = False
     
   def time_out(self):
     if not self.running:
@@ -124,13 +164,13 @@ class Stopwatch:
     self.nx.remove(self.oid)
 
     self.num += 1
-    self.nx.svg(self.oid, self.util.draw_svg_text(self.w, self.h, '{num}'.format(num=self.num)), self.rect[0], self.rect[1], self.rect[2], self.rect[3])
+    self.nx.svg(self.oid, draw_svg_text(self.w, self.h, '{num}'.format(num=self.num)), self.rect[0], self.rect[1], self.rect[2], self.rect[3])
     self.nx.timer(self.oid, 1)
     #Timer(1000, )
     
   def run(self):
     self.running = True
-    self.nx.svg(self.oid, self.util.draw_svg_text(self.w, self.h, '{num}'.format(num=self.num)), self.rect[0], self.rect[1], self.rect[2], self.rect[3])
+    self.nx.svg(self.oid, draw_svg_text(self.w, self.h, '{num}'.format(num=self.num)), self.rect[0], self.rect[1], self.rect[2], self.rect[3])
     self.nx.timer(self.oid, 1)
     #Timer(1000, )
 
@@ -148,7 +188,9 @@ class MyHandler(EventHandler):
 
   def on_event(self, c:EventInfo):
     print(c)
-    if c.id == 200:
+    if c.info == 'CountDown':
+      self.counter.update()
+    elif c.id == 200:
       self.stopwatch.time_out()
 
 
@@ -160,8 +202,9 @@ if __name__ == "__main__":
   height = 12
   margin = 3
   gid = 100  
-
-  nx.send_stage_info(nx.stage_builder(width + margin, height))
+  stage = nx.stage_builder(width + margin, height)
+  stage.background = 'Blue'
+  nx.send_stage_info(stage)
   nx.hint(hint)
 
     
@@ -188,31 +231,35 @@ if __name__ == "__main__":
   d1 = '<svg viewBox="0 0 100 100">\
     <text fill="#111" x="0" y="0" font-size="100" font-family="Roboto" text-anchor="middle">A</text>\
   </svg>'
-  nx.svg(300, d, 0, 0, 1, 1)  
-  nx.svg(300, d, 1, 1, 2, 2)
+  #nx.svg(300, d, 0, 0, 1, 1)  
+  #nx.svg(300, d, 1, 1, 2, 2)
+  
   #util = Util(nx) 
   #nx.svg(400, util.draw_svg_text(1, 1, 'A'), 0, 0, 1, 1)
+  #nx.svg(100+7, draw_svg_text_full_screen(width, height, "{num}".format(num=7), 5, "#777", 0.5), 0, 0, width, height)
+  #nx.main_loop()
 
 
   handler.stopwatch = Stopwatch(nx, 200, [12,0,2,1])
-  handler.stopwatch.run()
+  #handler.stopwatch.run()
+  handler.counter = CountDown(nx, width, height)
 
-  '''
   c = 0
   func = 0
-  while c < funcsAll.length:
+  while c < len(funcsAll):
     if func == 0:
       funcs = funcsAll[c]
-      v = math.random()*funcs.length
+      v = random.random()*len(funcs)
       r = math.floor(v)
-      print(c, funcs.length, v, r)
+      print(c, len(funcs), v, r)
       func = funcs[r]
-    #result = test01(nx, width, height, margin, func, stopwatch)
-    #print(result)
-    #if result[0]:
-    #  c += 1
-    #  func = 0
-    #else:
-    #  stopwatch.num += 10'''
+    #handler.counter.run(3, 1)
+    result = test01(handler, width, height, margin, func)
+    print(result)
+    if result[0]:
+      c += 1
+      func = 0
+    else:
+      handler.stopwatch.num += 10
   nx.main_loop()  
 

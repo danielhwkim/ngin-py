@@ -81,7 +81,7 @@ class EventInfo:
     if self.info == 'distance':
       return "Distance {on} for {id1} and {id2}".format(on = "on" if self.on else "off", id1 = self.id, id2 = self.id2)
     else:   
-      return "EventInfo {event} - {completed} for {id1} ({x}, {y})".format(event = self.info, completed = "completed" if self.completed else "not completed", id1 = self.id, x = self.x, y = self.y)
+      return "EventInfo {event} - {completed} for {id1} {info} ({x}, {y})".format(event = self.info, completed = "completed" if self.completed else "not completed", id1 = self.id, info=self.info, x = self.x, y = self.y)
 
 class KeyInfo:
   def __init__(self, c):
@@ -147,6 +147,7 @@ class Recv:
     self.socket = socket
     self.return_ack = False
     self.return_cmd = False
+    self.return_relay = False
     self.q = deque()
     self.handler = EventHandler()
 
@@ -170,7 +171,13 @@ class Recv:
     self.return_cmd = True
     r = self.event_loop()
     self.return_cmd = False
-    return r   
+    return r
+
+  def wait_relay(self):
+    self.return_relay = True
+    r = self.event_loop()
+    self.return_relay = False
+    return r
 
   def event_loop(self) -> None:
     while True:
@@ -202,6 +209,8 @@ class Recv:
       c.ParseFromString(data)
       head = c.ints[0]
 
+      print(head)
+
       if head == Head.ack:
         if self.return_ack:
           return c.ints[1]
@@ -214,6 +223,8 @@ class Recv:
           print(f'Unexpected: Cmd - {c}')
       elif self.return_ack or self.return_cmd:
         self.q.append(c)
+      elif self.return_relay and head == Head.relay:
+        return c
       else:
         self.handler.handle(c)
 
@@ -388,6 +399,11 @@ class Nx:
     c = Cmd()
     c.strings.append('remove')
     c.ints.append(id)
+    self.send(Head.cmd, c)
+
+  def removeAll(self) -> None:
+    c = Cmd()
+    c.strings.append('removeAll')
     self.send(Head.cmd, c)
 
   def submit(self, id:int) -> None:
@@ -605,15 +621,18 @@ class Nx:
     self.send(Head.cmd, c)
 
 
-  def translate(self, id:int, x:float, y:float, time:float, type:str = 'easeInOut', ack:bool=False):
-    return self.transform(id, {'translate':(x,y)}, time, type, ack)
+  def translate(self, id:int, x:float, y:float, time:float, type:str = 'easeInOut', need_ack:bool=False, need_event:bool=False):
+    return self.transform(id, {'translate':(x,y)}, time, type, need_ack, need_event)
 
-  def transform(self, id:int, transform:dict, time:float, type:str = 'easeInOut', ack:bool=False):
+  def transform(self, id:int, transform:dict, time:float, type:str = 'easeInOut', need_ack:bool=False, need_event:bool=False):
     c = Cmd()
     c.strings.append('transform')
     c.strings.append(type)    
     c.ints.append(id)
-    c.ints.append(1 if ack else 0)
+    if need_event:
+      c.ints.append(2)
+    else:
+      c.ints.append(1 if need_ack else 0)
 
     c.floats.append(time)  
 
@@ -646,7 +665,7 @@ class Nx:
       c.floats.append(0)         
 
     self.send(Head.cmd, c)
-    if ack:
+    if need_ack:
       return self.recv.wait_ack_id(id)      
 
   def hint(self, hint:str) -> None:
@@ -655,7 +674,7 @@ class Nx:
     c.strings.append(hint)
     self.send(Head.cmd, c)
 
-  def svg(self, id:int, svg:str, x:float, y:float, width:float, height:float):
+  def svg(self, id:int, svg:str, x:float, y:float, width:float, height:float, info:str=""):
     #c = Cmd()
     #c.strings.append('svg')
     #c.strings.append(svg)
@@ -679,6 +698,7 @@ class Nx:
     c = NObject()
     c.tid = 0
     c.id = id
+    c.info = info
 
     v = c.visual
     v.current = NClipType.svg
@@ -707,3 +727,38 @@ class Nc:
     self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     self.socket.connect((HOST, self.port))
     self.recv = Recv(self.socket)
+
+  def set_event_handler(self, handler):
+    self.recv.handler = handler
+
+  def find_ip(self, type, verbose=False):
+      event_result_available = threading.Event()
+      zeroconf = Zeroconf()
+      listener = ServiceListener(event_result_available, verbose)
+      browser = ServiceBrowser(zeroconf, type, listener)
+      event_result_available.wait()
+      #print(f'ip:{listener.result}')
+      #try:
+      #    input("Press enter to exit...\n\n")
+      #finally:
+      #    zeroconf.close()
+      zeroconf.close()
+      return listener.result    
+
+  def send(self, head:Head, data, ack:bool = False):
+    bs = data.SerializeToString()
+    head_bytes = struct.pack('<L', head)  
+    len_bytes = struct.pack('<L', len(bs))
+    #print(f'size:4 + {len(bs)}')
+    self.socket.sendall(head_bytes + len_bytes + bs)
+    if(ack):
+      return self.recv.wait_ack()
+
+  def relay(self, strings:list[str], ints:list[int], floats:list[float]) -> None:
+    c = Cmd()
+    c.strings.append('relay')
+    c.strings.extend(strings)
+    c.ints.append(Head.relay)
+    c.ints.extend(ints)
+    c.floats.extend(floats)
+    self.send(Head.cmd, c)
