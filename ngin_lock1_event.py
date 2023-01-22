@@ -13,7 +13,7 @@ import struct
 import json
 import math
 from collections import deque
-import queue
+#import Queue
 
 class ServiceListener:
   def __init__(self, event_result_available, verbose) -> None:
@@ -147,33 +147,28 @@ class EventHandler:
 
 
 class EventRunner(threading.Thread):
-  def __init__(self, q:queue.Queue, handler:EventHandler):
+  def __init__(self, event, handler:EventHandler):
     super().__init__()
-    self.q = q
+    self.event = event
     self.handler = handler
 
   def run(self):
-    #self.handler.handle(self.event)
-    while True:
-      data = self.q.get()
-      self.handler.handle(data)
-
+    self.handler.handle(self.event)
 class Recv(threading.Thread):
-  def __init__(self, socket:socket, q:queue.Queue) -> None:
+  def __init__(self, socket:socket) -> None:
     super().__init__()
     self.remaining = 0
     self.socket = socket
-    #self.return_ack = False
-    #self.return_cmd = False
-    #self.return_relay = False
-    #self.q = deque()
-    self.q = q
-    #self.handler = EventHandler()
+    self.return_ack = False
+    self.return_cmd = False
+    self.return_relay = False
+    self.q = deque()
+    self.handler = EventHandler()
     self.acks = set()
     #self.acks_lock = threading.Lock()
     #self.cmds = set()
-    #self.lock = threading.Lock()
-    #self.lock_count = 0
+    self.lock = threading.Lock()
+    self.lock_count = 0
     #self.init = True
     #self.start()
 
@@ -273,18 +268,17 @@ class Recv(threading.Thread):
         #self.lock_count -= 1
         #print('process_cmd end ({i}) after release ({c})'.format(i=id, c = self.lock_count))            
       else:
-        #print('process_event before lock ({c})'.format(c = self.lock_count))
-        #self.lock.acquire()
-        #self.lock_count += 1
-        #print('process_event after lock ({c})'.format(c = self.lock_count))
+        print('process_event before lock ({c})'.format(c = self.lock_count))
+        self.lock.acquire()
+        self.lock_count += 1
+        print('process_event after lock ({c})'.format(c = self.lock_count))
         #self.handler.handle(c)
-        #runner = EventRunner(c, self.handler)
-        #runner.start()
-        #print('process_event end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
-        #self.lock.release()
-        #self.lock_count -= 1
-        #print('process_event end ({i}) after release ({c})'.format(i=id, c = self.lock_count))
-        self.q.put(c)
+        runner = EventRunner(c, self.handler)
+        runner.start()
+        print('process_event end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
+        self.lock.release()
+        self.lock_count -= 1
+        print('process_event end ({i}) after release ({c})'.format(i=id, c = self.lock_count))    
       #self.lock.release()   
 
 class NObjectInfo:
@@ -303,17 +297,12 @@ class Nx:
     self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     self.socket.connect((HOST, self.port))
-    self.q = queue.Queue()
-    self.runner = EventRunner(self.q, EventHandler())
-    self.recv = Recv(self.socket, self.q)
+    self.recv = Recv(self.socket)
     #self.recv.start()
-    self.runner.start()
-    self.recv.start()    
 
   def set_event_handler(self, handler):
-    #self.recv.handler = handler
-    self.runner.handler = handler
-
+    self.recv.handler = handler
+    self.recv.start()
 
   def find_ip(self, type, verbose=False):
       event_result_available = threading.Event()
