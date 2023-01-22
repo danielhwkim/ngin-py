@@ -178,11 +178,10 @@ class Recv(threading.Thread):
     #self.acks_lock.acquire()
     self.acks.add((id, l))
     #self.acks_lock.release()
-    
-    #print('prepare_ack ({i}) before release ({c})'.format(i=id, c = self.lock_count))
-    #self.lock.release()
-    #elf.lock_count -= 1
-    #print('prepare_ack ({i}) after release ({c})'.format(i=id, c = self.lock_count))    
+    print('prepare_ack ({i}) before release ({c})'.format(i=id, c = self.lock_count))
+    self.lock.release()
+    self.lock_count -= 1
+    print('prepare_ack ({i}) after release ({c})'.format(i=id, c = self.lock_count))    
     return l
  
   def process_ack(self, c) -> bool:
@@ -194,10 +193,10 @@ class Recv(threading.Thread):
         self.acks.discard(item)
         item[1].release()
         finished = False
-        #print('process_ack ({i}) before lock ({c})'.format(i=item[0], c = self.lock_count))
-        #self.lock.acquire()
-        #self.lock_count +=1
-        #print('process_ack ({i}) after lock ({c})'.format(i=item[0], c = self.lock_count))             
+        print('process_ack ({i}) before lock ({c})'.format(i=item[0], c = self.lock_count))
+        self.lock.acquire()
+        self.lock_count +=1
+        print('process_ack ({i}) after lock ({c})'.format(i=item[0], c = self.lock_count))             
         break
       else:
         print(f'Unexpected: Ack - {c}')
@@ -224,7 +223,10 @@ class Recv(threading.Thread):
       #if self.init:
       #  self.init = False
       #else:
-
+      print('loop before lock ({c})'.format(c = self.lock_count))
+      self.lock.acquire()
+      self.lock_count += 1
+      print('loop after lock ({c})'.format(c = self.lock_count))
 
       if self.remaining < 4:
         if self.remaining == 0:
@@ -255,26 +257,20 @@ class Recv(threading.Thread):
 
       if head == Head.ack:
         if self.process_ack(c):
-          #print('process_ack end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
-          #self.lock.release()
-          #self.lock_count -= 1
-          #print('process_ack end ({i}) after release ({c})'.format(i=id, c = self.lock_count))  
-          pass  
+          print('process_ack end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
+          self.lock.release()
+          self.lock_count -= 1
+          print('process_ack end ({i}) after release ({c})'.format(i=id, c = self.lock_count))    
 
       elif head == Head.cmd:
         print(f'Unexpected: Cmd - {c}')
-        #print('process_cmd end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
-        #self.lock.release()
-        #self.lock_count -= 1
-        #print('process_cmd end ({i}) after release ({c})'.format(i=id, c = self.lock_count))            
+        print('process_cmd end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
+        self.lock.release()
+        self.lock_count -= 1
+        print('process_cmd end ({i}) after release ({c})'.format(i=id, c = self.lock_count))            
       else:
-        print('process_event before lock ({c})'.format(c = self.lock_count))
-        self.lock.acquire()
-        self.lock_count += 1
-        print('process_event after lock ({c})'.format(c = self.lock_count))
         #self.handler.handle(c)
-        runner = EventRunner(c, self.handler)
-        runner.start()
+        EventRunner(c, self.handler).start()
         print('process_event end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
         self.lock.release()
         self.lock_count -= 1
