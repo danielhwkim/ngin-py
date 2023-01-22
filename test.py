@@ -22,7 +22,7 @@ class MyHandler(EventHandler):
   
   def on_tap(self, tap):
     print(tap.x, tap.y)
-    nx.translate(100, tap.x, tap.y, 0, 'linear', False)
+    nx.translate(100, tap.x, tap.y, 0.25, 'linear', True)
 
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo')
@@ -81,7 +81,7 @@ if __name__ == "__main__":
   #nx.translate_to(100, 15, 15, 1, 'easeInOut', True)
 
   nx.transform(100, {'translate':(15, 15), 'scale':(1.5, 1.5), 'angle':2*math.pi}, 1, 'easeInOut', True)
-  #nx.transform(100, {'translate':(5, 5), 'scale':(1.5, 1.5), 'angle':0}, 0.5, 'easeInOut', True) 
-  #nx.translate(100, 15, 15, 1, 'easeInOut', True)
+  nx.transform(100, {'translate':(5, 5), 'scale':(1.5, 1.5), 'angle':0}, 0.5, 'easeInOut', True) 
+  nx.translate(100, 15, 15, 1, 'easeInOut', True)
 
   nx.main_loop()

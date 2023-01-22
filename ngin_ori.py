@@ -13,7 +13,6 @@ import struct
 import json
 import math
 from collections import deque
-#import Queue
 
 class ServiceListener:
   def __init__(self, event_result_available, verbose) -> None:
@@ -102,11 +101,8 @@ class ErrorInfo:
     self.code = c.ints[1]
   def __str__(self):
     return "Error {name} code:{code}".format(name=self.name, code=self.code)
-
-
 class EventHandler:
   unexpected = 'Unexpected:'
-
   def handle(self, c):
     head = c.ints[0]
     if head == Head.key:
@@ -145,18 +141,8 @@ class EventHandler:
   def on_relay(self, c):
     print(self.unexpected, c)       
 
-
-class EventRunner(threading.Thread):
-  def __init__(self, event, handler:EventHandler):
-    super().__init__()
-    self.event = event
-    self.handler = handler
-
-  def run(self):
-    self.handler.handle(self.event)
-class Recv(threading.Thread):
+class Recv:
   def __init__(self, socket:socket) -> None:
-    super().__init__()
     self.remaining = 0
     self.socket = socket
     self.return_ack = False
@@ -164,44 +150,22 @@ class Recv(threading.Thread):
     self.return_relay = False
     self.q = deque()
     self.handler = EventHandler()
-    self.acks = set()
-    #self.acks_lock = threading.Lock()
-    #self.cmds = set()
-    self.lock = threading.Lock()
-    self.lock_count = 0
-    #self.init = True
-    #self.start()
 
-  def prepare_ack(self, id):
-    l = threading.Lock()
-    l.acquire()
-    #self.acks_lock.acquire()
-    self.acks.add((id, l))
-    #self.acks_lock.release()
-    print('prepare_ack ({i}) before release ({c})'.format(i=id, c = self.lock_count))
-    self.lock.release()
-    self.lock_count -= 1
-    print('prepare_ack ({i}) after release ({c})'.format(i=id, c = self.lock_count))    
-    return l
- 
-  def process_ack(self, c) -> bool:
-    print(f'Ack - {c}')
-    finished = True
-    #self.acks_lock.acquire()
-    for item in self.acks:
-      if item[0] == c.ints[1]:
-        self.acks.discard(item)
-        item[1].release()
-        finished = False
-        print('process_ack ({i}) before lock ({c})'.format(i=item[0], c = self.lock_count))
-        self.lock.acquire()
-        self.lock_count +=1
-        print('process_ack ({i}) after lock ({c})'.format(i=item[0], c = self.lock_count))             
+  def wait_ack(self):
+    self.return_ack = True
+    r = self.event_loop()
+    self.return_ack = False
+    return r
+
+  def wait_ack_id(self, id):
+    self.return_ack = True
+    while True:
+      r = self.event_loop()
+      if r == id:
         break
-      else:
-        print(f'Unexpected: Ack - {c}')
-    #self.acks_lock.release()
-    return finished
+      print('Unexpected Ack:', r)
+    self.return_ack = False
+    return r    
 
   def wait_cmd(self):
     self.return_cmd = True
@@ -215,19 +179,11 @@ class Recv(threading.Thread):
     self.return_relay = False
     return r
 
-  def run(self):
-    self.event_loop2()
-
-  def event_loop2(self) -> None:
+  def event_loop(self) -> None:
     while True:
-      #if self.init:
-      #  self.init = False
-      #else:
-      print('loop before lock ({c})'.format(c = self.lock_count))
-      self.lock.acquire()
-      self.lock_count += 1
-      print('loop after lock ({c})'.format(c = self.lock_count))
-
+      if not self.return_ack and not self.return_cmd and  len(self.q) != 0:
+        self.handler.handle(self.q.popleft())
+        continue
       if self.remaining < 4:
         if self.remaining == 0:
           self.buff = self.socket.recv(1024)
@@ -256,26 +212,21 @@ class Recv(threading.Thread):
       print(head)
 
       if head == Head.ack:
-        if self.process_ack(c):
-          print('process_ack end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
-          self.lock.release()
-          self.lock_count -= 1
-          print('process_ack end ({i}) after release ({c})'.format(i=id, c = self.lock_count))    
-
+        if self.return_ack:
+          return c.ints[1]
+        else:
+          print(f'Unexpected: Ack - {c}')
       elif head == Head.cmd:
-        print(f'Unexpected: Cmd - {c}')
-        print('process_cmd end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
-        self.lock.release()
-        self.lock_count -= 1
-        print('process_cmd end ({i}) after release ({c})'.format(i=id, c = self.lock_count))            
+        if self.return_cmd:
+          return c
+        else:
+          print(f'Unexpected: Cmd - {c}')
+      elif self.return_ack or self.return_cmd:
+        self.q.append(c)
+      elif self.return_relay and head == Head.relay:
+        return c
       else:
-        #self.handler.handle(c)
-        EventRunner(c, self.handler).start()
-        print('process_event end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
-        self.lock.release()
-        self.lock_count -= 1
-        print('process_event end ({i}) after release ({c})'.format(i=id, c = self.lock_count))    
-      #self.lock.release()   
+        self.handler.handle(c)
 
 class NObjectInfo:
   def __init__(self, info:list[float]):
@@ -294,11 +245,9 @@ class Nx:
     self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     self.socket.connect((HOST, self.port))
     self.recv = Recv(self.socket)
-    #self.recv.start()
 
   def set_event_handler(self, handler):
     self.recv.handler = handler
-    self.recv.start()
 
   def find_ip(self, type, verbose=False):
       event_result_available = threading.Event()
@@ -314,25 +263,20 @@ class Nx:
       zeroconf.close()
       return listener.result
 
-  def send(self, head:Head, data, ack:bool = False, id:int = 0):
+  def send(self, head:Head, data, ack:bool = False):
     bs = data.SerializeToString()
     head_bytes = struct.pack('<L', head)  
     len_bytes = struct.pack('<L', len(bs))
-    print('send ack:{ack} id:{id}'.format(ack=ack, id=id))    
-    if (ack):
-      l = self.recv.prepare_ack(id)
-      #print(f'size:4 + {len(bs)}')
-      self.socket.sendall(head_bytes + len_bytes + bs)
-      l.acquire()
-      return id
-    else:
-      self.socket.sendall(head_bytes + len_bytes + bs)      
+    #print(f'size:4 + {len(bs)}')
+    self.socket.sendall(head_bytes + len_bytes + bs)
+    if(ack):
+      return self.recv.wait_ack()
 
   def send_obj(self, data, ack:bool = False):
-    return self.send(Head.object, data, ack, data.id)
+    return self.send(Head.object, data, ack)
 
   def send_stage_info(self, data):
-    return self.send(Head.stage, data, True, 0)
+    return self.send(Head.stage, data, True)
 
   def stage_builder(self, width:float, height:float):
     c = NStageInfo()
@@ -442,8 +386,7 @@ class Nx:
     return a
 
   def main_loop(self):
-    #self.recv.event_loop()
-    self.recv.join()
+    self.recv.event_loop()
 
 
   def follow(self, id:int) -> None:
@@ -666,8 +609,8 @@ class Nx:
     c.strings.append(key)
     c.bytes.append(bytes)
     c.ints.append(99999)
-    self.send(Head.cmd, c, True, 99999)
-    #return self.recv.wait_ack_id(99999)
+    self.send(Head.cmd, c)
+    return self.recv.wait_ack_id(99999)
 
   def distance_tracking(self, id1:int, id2:int, dist:float):
     c = Cmd()
@@ -721,9 +664,9 @@ class Nx:
       c.ints.append(0)
       c.floats.append(0)         
 
-    self.send(Head.cmd, c, need_ack, id)
-    #if need_ack:
-    #  return self.recv.wait_ack_id(id)      
+    self.send(Head.cmd, c)
+    if need_ack:
+      return self.recv.wait_ack_id(id)      
 
   def hint(self, hint:str) -> None:
     c = Cmd()
