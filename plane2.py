@@ -6,6 +6,7 @@ from ngin import Nx, EventHandler, NObjectInfo
 
 class MyHandler(EventHandler):
   def __init__(self, nx:Nx):
+    super().__init__()
     self.nx = nx      
     self.key_down_left = False
     self.key_down_right = False
@@ -34,7 +35,7 @@ class MyHandler(EventHandler):
     p = self.nx.body_builder(o, BodyShape.rectangle, info.x-0.5 + 2*math.sin(info.angle), info.y-0.5 - 2*math.cos(info.angle))
     p.angle = info.angle
     v = self.nx.visual_builder(o, [nx.clip_builder('kenney_pixelshmup/tiles_packed.png', 16, 16, [1, 2, 3])])
-    self.nx.send(Head.object, o, True)
+    self.nx.send_obj( o, True)
     self.nx.forward(new_id, 0, 20)
     self.nx.timer(new_id, 0.7)
     self.nx.audio_play('sfx/fire_1.mp3')
@@ -89,7 +90,7 @@ class MyHandler(EventHandler):
       o = self.nx.obj_builder(self.get_dynamic_id(), "fire")
       o.tid = contact.id1
       self.nx.visual_builder(o, [nx.clip_builder('kenney_pixelshmup/tiles_packed.png', 16, 16, [5])])
-      self.nx.send(Head.object, o, True)
+      self.nx.send_obj( o, True)
 
   def on_event(self, event):
     if event.info == 'missile':
@@ -98,7 +99,7 @@ class MyHandler(EventHandler):
 
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo', 4040)
-  nx.set_event_handler(MyHandler(nx))
+  #nx.set_event_handler(MyHandler(nx))
   nx.bgm_play('music/bg_music.mp3')
   f = open('./data/planes0.tmj', "r")
   j = json.loads(f.read())
@@ -109,24 +110,24 @@ if __name__ == "__main__":
   stage.debug = True
   nx.send(Head.stage, stage, True)  
 
-  nx.send(Head.object, nx.tiles_builder('kenney_pixelshmup/tiles_packed.png', tileSize, t['width'], t['height'], t['data']))
+  nx.send_obj( nx.tiles_builder('kenney_pixelshmup/tiles_packed.png', tileSize, t['width'], t['height'], t['data']))
 
   o = nx.obj_builder(10000, "wall")
   p = nx.body_builder(o, BodyShape.rectangle, 0, 0)
   p.type = BodyType.staticBody
   p.width = 70
   p.height = 1  
-  nx.send(Head.object, o, True)
+  nx.send_obj( o, True)
   p.width = 1
   p.height = 40  
-  nx.send(Head.object, o, True)
+  nx.send_obj( o, True)
   p.x=70-1
-  nx.send(Head.object, o, True)  
+  nx.send_obj( o, True)  
   p.x=0
   p.y=40-1
   p.width = 70
   p.height = 1
-  nx.send(Head.object, o, True) 
+  nx.send_obj( o, True) 
 
 
   o = nx.obj_builder(100, "hero")
@@ -156,4 +157,4 @@ if __name__ == "__main__":
   #nx.angular(200, 1)
   #nx.follow(200)
 
-  nx.main_loop()
+  nx.main_loop(MyHandler(nx))

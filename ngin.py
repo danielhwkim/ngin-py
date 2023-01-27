@@ -106,6 +106,8 @@ class ErrorInfo:
 
 class EventHandler:
   unexpected = 'Unexpected:'
+  def __init__(self) -> None:
+    self.completed = False
 
   def handle(self, c):
     head = c.ints[0]
@@ -158,79 +160,55 @@ class EventRunner(threading.Thread):
       data = self.q.get()
       self.handler.handle(data)
 
+class RemoteAction:
+  sn = 0
+  def __init__(self, id:int) -> None:
+    self.id = id
+    self.sn = self.get_sn()
+    self.lock = threading.Lock()
+    self.lock.acquire()
+
+  def acquire(self):
+    self.lock.acquire()
+  
+  def get_sn(self) -> int:
+    RemoteAction.sn += 1
+    return RemoteAction.sn
+
+
 class Recv(threading.Thread):
   def __init__(self, socket:socket, q:queue.Queue) -> None:
     super().__init__()
     self.remaining = 0
     self.socket = socket
-    #self.return_ack = False
-    #self.return_cmd = False
-    #self.return_relay = False
-    #self.q = deque()
     self.q = q
-    #self.handler = EventHandler()
-    self.acks = set()
-    #self.acks_lock = threading.Lock()
-    #self.cmds = set()
-    #self.lock = threading.Lock()
-    #self.lock_count = 0
-    #self.init = True
-    #self.start()
+    self.remote_actions = set()
 
-  def prepare_ack(self, id):
-    l = threading.Lock()
-    l.acquire()
-    #self.acks_lock.acquire()
-    self.acks.add((id, l))
-    #self.acks_lock.release()
-    
-    #print('prepare_ack ({i}) before release ({c})'.format(i=id, c = self.lock_count))
-    #self.lock.release()
-    #elf.lock_count -= 1
-    #print('prepare_ack ({i}) after release ({c})'.format(i=id, c = self.lock_count))    
-    return l
+  def add_remote_action(self, id:int) -> RemoteAction:
+    remote_action = RemoteAction(id)
+    self.remote_actions.add(remote_action)
+    return remote_action
+
+  def get_remote_action(self, sn:int):
+    for remote_action in self.remote_actions:
+      if remote_action.sn == sn:
+        return remote_action
+    return None
  
-  def process_ack(self, c) -> bool:
-    print(f'Ack - {c}')
-    finished = True
-    #self.acks_lock.acquire()
-    for item in self.acks:
-      if item[0] == c.ints[1]:
-        self.acks.discard(item)
-        item[1].release()
-        finished = False
-        #print('process_ack ({i}) before lock ({c})'.format(i=item[0], c = self.lock_count))
-        #self.lock.acquire()
-        #self.lock_count +=1
-        #print('process_ack ({i}) after lock ({c})'.format(i=item[0], c = self.lock_count))             
-        break
-      else:
-        print(f'Unexpected: Ack - {c}')
-    #self.acks_lock.release()
-    return finished
-
-  def wait_cmd(self):
-    self.return_cmd = True
-    r = self.event_loop()
-    self.return_cmd = False
-    return r
-
-  def wait_relay(self):
-    self.return_relay = True
-    r = self.event_loop()
-    self.return_relay = False
-    return r
+  def process_remote_action(self, c) -> bool:
+    remote_action = self.get_remote_action(c.ints[1])
+    if remote_action != None:
+      self.remote_actions.discard(remote_action)
+      remote_action.value = c
+      remote_action.lock.release()
+      return True
+    return False
 
   def run(self):
     self.event_loop2()
 
   def event_loop2(self) -> None:
     while True:
-      #if self.init:
-      #  self.init = False
-      #else:
-
-
       if self.remaining < 4:
         if self.remaining == 0:
           self.buff = self.socket.recv(1024)
@@ -256,36 +234,15 @@ class Recv(threading.Thread):
       c.ParseFromString(data)
       head = c.ints[0]
 
-      print(head)
-
       if head == Head.ack:
-        if self.process_ack(c):
-          #print('process_ack end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
-          #self.lock.release()
-          #self.lock_count -= 1
-          #print('process_ack end ({i}) after release ({c})'.format(i=id, c = self.lock_count))  
-          pass  
-
+        if not self.process_remote_action(c):
+          print(f'Unexpected: Ack - {c}')
       elif head == Head.cmd:
-        print(f'Unexpected: Cmd - {c}')
-        #print('process_cmd end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
-        #self.lock.release()
-        #self.lock_count -= 1
-        #print('process_cmd end ({i}) after release ({c})'.format(i=id, c = self.lock_count))            
+        print(f'Cmd - {c}')
+        if not self.process_remote_action(c):
+          print(f'Unexpected: Cmd - {c}')
       else:
-        #print('process_event before lock ({c})'.format(c = self.lock_count))
-        #self.lock.acquire()
-        #self.lock_count += 1
-        #print('process_event after lock ({c})'.format(c = self.lock_count))
-        #self.handler.handle(c)
-        #runner = EventRunner(c, self.handler)
-        #runner.start()
-        #print('process_event end ({i}) before release ({c})'.format(i=id, c = self.lock_count))
-        #self.lock.release()
-        #self.lock_count -= 1
-        #print('process_event end ({i}) after release ({c})'.format(i=id, c = self.lock_count))
         self.q.put(c)
-      #self.lock.release()   
 
 class NObjectInfo:
   def __init__(self, info:list[float]):
@@ -304,15 +261,8 @@ class Nx:
     self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     self.socket.connect((HOST, self.port))
     self.q = queue.Queue()
-    self.runner = EventRunner(self.q, EventHandler())
     self.recv = Recv(self.socket, self.q)
-    #self.recv.start()
-    self.runner.start()
     self.recv.start()    
-
-  def set_event_handler(self, handler):
-    #self.recv.handler = handler
-    self.runner.handler = handler
 
 
   def find_ip(self, type, verbose=False):
@@ -329,19 +279,24 @@ class Nx:
       zeroconf.close()
       return listener.result
 
-  def send(self, head:Head, data, ack:bool = False, id:int = 0):
+  def _send(self, head:Head, data):
     bs = data.SerializeToString()
     head_bytes = struct.pack('<L', head)  
     len_bytes = struct.pack('<L', len(bs))
-    print('send ack:{ack} id:{id}'.format(ack=ack, id=id))    
+    #print(f'size:4 + {len(bs)}')    
+    self.socket.sendall(head_bytes + len_bytes + bs)
+
+  def send(self, head:Head, data, ack:bool = False, id:int = 0):
     if (ack):
-      l = self.recv.prepare_ack(id)
-      #print(f'size:4 + {len(bs)}')
-      self.socket.sendall(head_bytes + len_bytes + bs)
-      l.acquire()
-      return id
+      remote_action = self.recv.add_remote_action(id)
+      data.sn = remote_action.sn
+      print('send ack:{ack}({sn}) id:{id}'.format(ack=ack, sn=data.sn, id=id))    
+      self._send(head, data)
+      remote_action.acquire()
+      return remote_action
     else:
-      self.socket.sendall(head_bytes + len_bytes + bs)      
+      #print('send ack:{ack} id:{id}'.format(ack=ack, id=id))    
+      self._send(head, data)
 
   def send_obj(self, data, ack:bool = False):
     return self.send(Head.object, data, ack, data.id)
@@ -456,9 +411,10 @@ class Nx:
     a.y = y
     return a
 
-  def main_loop(self):
-    #self.recv.event_loop()
-    self.recv.join()
+  def main_loop(self, handler:EventHandler):
+    while not handler.completed:
+      data = self.q.get()
+      handler.handle(data)    
 
 
   def follow(self, id:int) -> None:
@@ -489,9 +445,8 @@ class Nx:
     c = Cmd()
     c.strings.append('objinfo')
     c.ints.append(id)
-    self.send(Head.cmd, c)
-    v = self.recv.wait_cmd()
-    return v
+    remote_action = self.send(Head.cmd, c, True, id)
+    return remote_action.value
 
   def get_obj_info(self, id:int) -> NObjectInfo:
     info = self._get_obj_info(id)
@@ -693,18 +648,15 @@ class Nx:
     self.send(Head.cmd, c)
 
 
-  def translate(self, id:int, x:float, y:float, time:float, type:str = 'easeInOut', need_ack:bool=False, need_event:bool=False):
-    return self.transform(id, {'translate':(x,y)}, time, type, need_ack, need_event)
+  def translate(self, id:int, x:float, y:float, time:float, type:str = 'easeInOut', need_ack:bool=False):
+    return self.transform(id, {'translate':(x,y)}, time, type, need_ack)
 
-  def transform(self, id:int, transform:dict, time:float, type:str = 'easeInOut', need_ack:bool=False, need_event:bool=False):
+  def transform(self, id:int, transform:dict, time:float, type:str = 'easeInOut', need_ack:bool=False):
     c = Cmd()
     c.strings.append('transform')
     c.strings.append(type)    
     c.ints.append(id)
-    if need_event:
-      c.ints.append(2)
-    else:
-      c.ints.append(1 if need_ack else 0)
+    c.ints.append(1 if need_ack else 0)
 
     c.floats.append(time)  
 
@@ -747,15 +699,6 @@ class Nx:
     self.send(Head.cmd, c)
 
   def svg(self, id:int, svg:str, x:float, y:float, width:float, height:float, info:str=""):
-    #c = Cmd()
-    #c.strings.append('svg')
-    #c.strings.append(svg)
-    #c.ints.append(id)
-    #c.floats.append(x)
-    #c.floats.append(y)
-    #c.floats.append(width)
-    #c.floats.append(height)
-    #self.send(Head.cmd, c)
     a = NClip()
     a.path = svg
     a.x = 0
@@ -799,9 +742,6 @@ class Nc:
     self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
     self.socket.connect((HOST, self.port))
     self.recv = Recv(self.socket)
-
-  def set_event_handler(self, handler):
-    self.recv.handler = handler
 
   def find_ip(self, type, verbose=False):
       event_result_available = threading.Event()

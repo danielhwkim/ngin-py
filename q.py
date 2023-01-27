@@ -4,6 +4,8 @@ import json
 import math
 from ngin import Nx, EventHandler, NObjectInfo, EventInfo
 from threading import Timer
+import threading
+import time
 
 hint = "\
 ### Python\n\
@@ -48,8 +50,33 @@ From **Highest** to **Lowest** precedence:\n\
 \n\
 "
 
-class CountDown:
-  def __init__(self, nx, width, height) -> None:
+
+class Stopwatch(threading.Thread):
+  def __init__(self, nx, oid, rect):
+    super().__init__()
+    self.nx = nx
+    self.rect = rect
+    self.w = rect[2]
+    self.h = rect[3]
+    self.oid = oid
+    self.num = 0
+    self.running = False
+    
+  def run(self):
+    self.running = True
+    self.nx.svg(self.oid, draw_svg_text(self.w, self.h, '{num}'.format(num=self.num)), self.rect[0], self.rect[1], self.rect[2], self.rect[3])
+    while self.running:
+      time.sleep(1)
+      self.nx.remove(self.oid)
+      self.num += 1
+      self.nx.svg(self.oid, draw_svg_text(self.w, self.h, '{num}'.format(num=self.num)), self.rect[0], self.rect[1], self.rect[2], self.rect[3])
+
+  def stop(self):
+    self.running = False
+    self.nx.remove(self.oid)
+    return self.num
+class CountDown(threading.Thread):
+  def __init__(self, nx, width, height, num, time) -> None:
     self.nx = nx
     print(width, height)
     self.fillopacity = 0.5
@@ -57,26 +84,20 @@ class CountDown:
     self.width = width
     self.height = height
     self.info = 'CountDown'
-
-  def animate(self):
-    self.nx.svg(100+self.num, draw_svg_text_full_screen(self.width, self.height, "{num}".format(num=self.num), self.textsize, self.fillopacity), 0, 0, self.width, self.height, self.info)
-    self.nx.translate(100+self.num, self.width, 0, self.time)
-
-    self.num -= 1
-    self.nx.svg(100+self.num, draw_svg_text_full_screen(self.width, self.height, "{num}".format(num=self.num), self.textsize, self.fillopacity), -self.width, 0, self.width, self.height, self.info)
-    self.nx.translate(100+self.num, 0, 0, self.time, "easeInOut", False, True)
-
-  def update(self):
-    if self.num > 0:
-      self.nx.remove(100+self.num)
-      self.animate()
-    else:
-      self.nx.remove(100+self.num)
-
-  def run(self, num, time):
     self.num = num
-    self.time = time
-    self.animate()
+    self.time = time    
+
+  def run(self):
+    num = self.num
+    self.nx.svg(100+num, draw_svg_text_full_screen(self.width, self.height, "{num}".format(num=num), self.textsize, self.fillopacity), 0, 0, self.width, self.height, self.info)
+    while num > 0:
+      self.nx.translate(100+num, self.width, 0, self.time, "easeInOut")
+      num -= 1
+      self.nx.svg(100+num, draw_svg_text_full_screen(self.width, self.height, "{num}".format(num=num), self.textsize, self.fillopacity), -self.width, 0, self.width, self.height, self.info)
+      self.nx.translate(100+num, 0, 0, self.time, "easeInOut", True) 
+      self.nx.remove(100+num+1) 
+    self.nx.translate(100+num, self.width, 0, self.time, "easeInOut", True)
+    self.nx.remove(100+num)     
 
 
 def draw_svg_grid(x, y, func):
@@ -105,13 +126,12 @@ def draw_svg_text_full_screen(x, y, text, size=1, fill="#111", fillopacity=1):
 def draw_svg_text(x, y, text):
     unit = 100    
     ori = '<svg viewBox="0 0 {x} {y}">\n'.format(x=x*unit, y=y*unit)
-    ori += '<text fill="#888" x="{x}" y="{y}" font-size="{unit}" font-family="Roboto" text-anchor="middle">{text}</text>\n'.format(x=x, y=y + unit, unit=unit, text=text)
-    #ori += '<rect x="{x}" y="{y}" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)/>\n'.format(x=x, y=y + unit)      
+    #ori += '<rect x="{x}" y="{y}" width="{width}" height="{height}" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)"/>\n'.format(x=0, y=0, width=x*unit, height=y*unit)      
+    ori += '<text fill="#888" x="{x}" y="{y}" font-size="{unit}" font-family="Roboto" text-anchor="middle">{text}</text>\n'.format(x=unit*x/2, y=unit*0.9, unit=unit, text=text)
     ori += '</svg>'
     return ori
 
-def test01(handler, width, height, margin, func):
-  nx = handler.nx
+def test01(nx, width, height, margin, func):
   aset = set()
   nothing_to_delete = 0
 
@@ -119,13 +139,15 @@ def test01(handler, width, height, margin, func):
     for j in range(height):
       if func(i,j):
         aset.add(i*100+j)
-  #nx.main_loop() 
   nx.svg(100, draw_svg_grid(width, height, func), 0, 0, width, height)
-  handler.counter.run(3, 1)
-  c = nx.recv.wait_relay()
-  print(c)
 
-  handler.counter.run(3, 1)
+  counter = CountDown(nx, width, height, 3, 1)
+  counter.run()
+  nx.main_loop(MyHandler(nx))
+  #c = nx.recv.wait_relay()
+  #print(c)
+
+  #handler.counter.run(3, 1)
   #countDown(width, height, 3, 1)
 
   result = True
@@ -147,40 +169,11 @@ def test01(handler, width, height, margin, func):
     nx.removeAll()
   return [result, len(aset) + nothing_to_delete]
 
-class Stopwatch:
-  def __init__(self, nx, oid, rect):
-    self.nx = nx
-    self.rect = rect
-    self.w = rect[2]
-    self.h = rect[3]
-    self.oid = oid
-    self.num = 0
-    self.running = False
-    
-  def time_out(self):
-    if not self.running:
-      return
-
-    self.nx.remove(self.oid)
-
-    self.num += 1
-    self.nx.svg(self.oid, draw_svg_text(self.w, self.h, '{num}'.format(num=self.num)), self.rect[0], self.rect[1], self.rect[2], self.rect[3])
-    self.nx.timer(self.oid, 1)
-    #Timer(1000, )
-    
-  def run(self):
-    self.running = True
-    self.nx.svg(self.oid, draw_svg_text(self.w, self.h, '{num}'.format(num=self.num)), self.rect[0], self.rect[1], self.rect[2], self.rect[3])
-    self.nx.timer(self.oid, 1)
-    #Timer(1000, )
-
-  def stop(self):
-    self.running = False
-    return self.num
 
 class MyHandler(EventHandler):
   def __init__(self, nx:Nx):
-    self.nx = nx     
+    super().__init__()
+    self.nx = nx
   
   def on_tap(self, tap):
     print(tap.x, tap.y)
@@ -188,16 +181,12 @@ class MyHandler(EventHandler):
 
   def on_event(self, c:EventInfo):
     print(c)
-    if c.info == 'CountDown':
-      self.counter.update()
-    elif c.id == 200:
-      self.stopwatch.time_out()
 
 
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo')
-  handler = MyHandler(nx)
-  nx.set_event_handler(handler)  
+  #handler = MyHandler(nx)
+  #nx.set_event_handler(handler)  
   width = 12
   height = 12
   margin = 3
@@ -231,18 +220,10 @@ if __name__ == "__main__":
   d1 = '<svg viewBox="0 0 100 100">\
     <text fill="#111" x="0" y="0" font-size="100" font-family="Roboto" text-anchor="middle">A</text>\
   </svg>'
-  #nx.svg(300, d, 0, 0, 1, 1)  
-  #nx.svg(300, d, 1, 1, 2, 2)
-  
-  #util = Util(nx) 
-  #nx.svg(400, util.draw_svg_text(1, 1, 'A'), 0, 0, 1, 1)
-  #nx.svg(100+7, draw_svg_text_full_screen(width, height, "{num}".format(num=7), 5, "#777", 0.5), 0, 0, width, height)
-  #nx.main_loop()
 
+  stopwatch = Stopwatch(nx, 200, [12,0,2,1])
+  stopwatch.start()
 
-  handler.stopwatch = Stopwatch(nx, 200, [12,0,2,1])
-  #handler.stopwatch.run()
-  handler.counter = CountDown(nx, width, height)
 
   c = 0
   func = 0
@@ -253,13 +234,13 @@ if __name__ == "__main__":
       r = math.floor(v)
       print(c, len(funcs), v, r)
       func = funcs[r]
-    #handler.counter.run(3, 1)
-    result = test01(handler, width, height, margin, func)
+    result = test01(nx, width, height, margin, func)
+    nx.main_loop(MyHandler(nx))     
     print(result)
     if result[0]:
       c += 1
       func = 0
     else:
-      handler.stopwatch.num += 10
-  nx.main_loop()  
+      stopwatch.num += 10
+  nx.main_loop(MyHandler(nx))  
 
