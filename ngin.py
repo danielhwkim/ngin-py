@@ -64,7 +64,8 @@ class ContactInfo:
     self.y1 = c.floats[3]
     self.x2 = c.floats[4]
     self.y2 = c.floats[5]
-
+  def __str__(self):
+    return "ContactInfo {is_ended} (x:{x}, y:{y}) ({info1}, id:{id1}, x:{x1}, y:{y1}) ({info2}, id:{id2}, x:{x2}, y:{y2})".format(is_ended = 'Ended' if self.is_ended else 'Begun', x=self.x, y=self.y, info1=self.info1, id1=self.id1, x1=self.x1, y1=self.y1, info2=self.info2, id2=self.id2, x2=self.x2, y2=self.y2)
 class EventInfo:
   def __init__(self, c):
     self.id = c.ints[2]
@@ -88,6 +89,8 @@ class KeyInfo:
   def __init__(self, c):
     self.name = c.strings[0]
     self.is_pressed = c.ints[1] == 1
+  def __str__(self):
+    return "KeyInfo is_pressed:{is_pressed} name:{name}".format(is_pressed = self.is_pressed, name=self.name)
 
 class TapInfo:
   def __init__(self, c):
@@ -95,7 +98,9 @@ class TapInfo:
     self.event = c.ints[2]
     self.x = c.floats[0]
     self.y = -c.floats[1]    
-
+  def __str__(self):
+    return "TapInfo info:{info} event:{event} ({x},{y})".format(info = self.info, event=self.event, x=self.x, y=self.y)
+  
 class ErrorInfo:  
   def __init__(self, c):
     self.name = c.strings[0]
@@ -290,12 +295,12 @@ class Ngin:
     if (ack):
       remote_action = self.recv.add_remote_action()
       data.sn = remote_action.sn
-      print('send ack:{ack}({sn}) id:{id}'.format(ack=ack, sn=data.sn, id=id))    
+      print('send ack:{ack}({sn})'.format(ack=ack, sn=data.sn))    
       self._send(head, data)
       remote_action.acquire()
       return remote_action
     else:
-      #print('send ack:{ack} id:{id}'.format(ack=ack, id=id))    
+      #print('send ack:{ack}'.format(ack=ack))    
       self._send(head, data)
 
 class Nx(Ngin):
@@ -308,7 +313,7 @@ class Nx(Ngin):
   def send_stage_info(self, data):
     return self.send(Head.stage, data, True)
 
-  def stage_builder(self, width:float, height:float):
+  def stage_builder(self, width:float, height:float) -> NStageInfo:
     c = NStageInfo()
     c.background = ''
     c.gravityX = 0
@@ -325,7 +330,7 @@ class Nx(Ngin):
     c.distanceTrackingInternal = 0
     return c
 
-  def tiles_builder(self, path:str, tile_size:float, width:float, height:float, data:list[int]):
+  def tiles_builder(self, path:str, tile_size:float, width:float, height:float, data:list[int]) -> NObject:
     c = NObject()
     c.tid = 0
     v = c.visual       
@@ -381,7 +386,7 @@ class Nx(Ngin):
     p.shape = shape
     return p
 
-  def visual_builder(self, obj:NObject, clips:list[NClip]):
+  def visual_builder(self, obj:NObject, clips:list[NClip]) -> NVisual:
     v = obj.visual
     v.current = NClipType.idle
     v.priority = 0
@@ -456,12 +461,12 @@ class Nx(Ngin):
     info = self._get_obj_info(id)
     return NObjectInfo(info.floats)
 
-  def set_action_type(self, id:int, action_type:NClipType, is_flip_horizontal:bool = False) -> None:
+  def set_clip_type(self, id:int, clip_type:NClipType, is_flip_horizontal:bool = False) -> None:
     c = Cmd()
-    c.strings.append('actionType')
+    c.strings.append('clipType')
     c.ints.append(id)
     c.ints.append(1 if is_flip_horizontal == True else 0)    
-    c.ints.append(action_type)
+    c.ints.append(clip_type)
     self.send(Head.cmd, c)
 
   def linear_to(self, id:int, x:float, y:float, speed:float):
