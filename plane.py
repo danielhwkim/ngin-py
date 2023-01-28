@@ -81,7 +81,7 @@ class MyHandler(EventHandler):
       print(event)
 
 if __name__ == "__main__":
-  nx = Nx('bonsoirdemo', 4040)
+  nx = Nx('bonsoirdemo')
   #nx.set_event_handler(MyHandler(nx))
   nx.bgm_play('music/bg_music.mp3')
   f = open('./data/planes0.tmj', "r")

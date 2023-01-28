@@ -143,14 +143,29 @@ def test01(nx, width, height, margin, func):
 
   counter = CountDown(nx, width, height, 3, 1)
   counter.run()
-  nx.main_loop(MyHandler(nx))
-  #c = nx.recv.wait_relay()
-  #print(c)
-
-  #handler.counter.run(3, 1)
-  #countDown(width, height, 3, 1)
+  handler = MyHandler(nx)
+  handler.submitted = False
+  while True:
+    handler.completed = False
+    nx.main_loop(handler)
+    if handler.submitted:
+      break
+    print(handler.x, handler.y)
+    o = nx.obj_builder(10, "fruit")
+    clip = nx.clip_builder('Items/Fruits/Bananas.png', 32, 32, [])
+    clip.stepTime = 0.05
+    v = nx.visual_builder(o, [clip])
+    v.x = 0.5 + handler.x
+    v.y = 0.5 + handler.y
+    nx.send_obj(o)
+    n = handler.x*100+handler.y
+    if n in aset:
+      aset.remove(n)
+    else:
+      nothing_to_delete += 1
 
   result = True
+
   if len(aset) == 0 and nothing_to_delete == 0:
     message = "SUCCESS!"
     size = 2
@@ -163,10 +178,9 @@ def test01(nx, width, height, margin, func):
     fillopacity = 1
     result = False
 
-    nx.svg(10000, draw_svg_text_full_screen(width+margin, height, message, size, fill, fillopacity), 0, 0, width+margin, height)
-
-    #countDown(width, height, 3, 1)
-    nx.removeAll()
+  nx.svg(10000, draw_svg_text_full_screen(width+margin, height, message, size, fill, fillopacity), 0, 0, width+margin, height)
+  counter.run()  
+  nx.removeAll()
   return [result, len(aset) + nothing_to_delete]
 
 
@@ -174,19 +188,21 @@ class MyHandler(EventHandler):
   def __init__(self, nx:Nx):
     super().__init__()
     self.nx = nx
-  
-  def on_tap(self, tap):
-    print(tap.x, tap.y)
-    #nx.translate(100, tap.x, tap.y, 0, 'easeInOut', True)
 
-  def on_event(self, c:EventInfo):
-    print(c)
+  def on_relay(self, c):
+    print('relay', c)    
+    cmd = c.strings[1]
+    if cmd == 'input':
+      self.x = c.ints[1]
+      self.y = c.ints[2]
+      self.completed = True
+    elif cmd == 'submit':
+      self.submitted = True
+      self.completed = True
 
 
 if __name__ == "__main__":
   nx = Nx('bonsoirdemo')
-  #handler = MyHandler(nx)
-  #nx.set_event_handler(handler)  
   width = 12
   height = 12
   margin = 3
@@ -234,8 +250,7 @@ if __name__ == "__main__":
       r = math.floor(v)
       print(c, len(funcs), v, r)
       func = funcs[r]
-    result = test01(nx, width, height, margin, func)
-    nx.main_loop(MyHandler(nx))     
+    result = test01(nx, width, height, margin, func)   
     print(result)
     if result[0]:
       c += 1

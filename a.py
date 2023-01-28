@@ -13,5 +13,9 @@ class MyHandler(EventHandler):
 if __name__ == "__main__":
   nc = Nc('bonsoirdemo')
   handler = MyHandler(nc)
-  nc.relay(["a"], [7], [0.7])
+  for j in range(12):
+    for i in range(12):
+      if i == j:
+        nc.relay(["input"], [i, j], [])
+  nc.relay(["submit"], [], [])    
 

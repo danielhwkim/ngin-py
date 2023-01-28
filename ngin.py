@@ -162,8 +162,8 @@ class EventRunner(threading.Thread):
 
 class RemoteAction:
   sn = 0
-  def __init__(self, id:int) -> None:
-    self.id = id
+  def __init__(self) -> None:
+    #self.id = id
     self.sn = self.get_sn()
     self.lock = threading.Lock()
     self.lock.acquire()
@@ -184,8 +184,8 @@ class Recv(threading.Thread):
     self.q = q
     self.remote_actions = set()
 
-  def add_remote_action(self, id:int) -> RemoteAction:
-    remote_action = RemoteAction(id)
+  def add_remote_action(self) -> RemoteAction:
+    remote_action = RemoteAction()
     self.remote_actions.add(remote_action)
     return remote_action
 
@@ -249,7 +249,7 @@ class NObjectInfo:
     self.x, self.y, self.width, self.height, self.angle, self.linearx, self.lineary, self.angular = info
 
 
-class Nx:
+class Ngin:
   def __init__(self, host:str, port:int = 4040, verbose:bool = False):
     self.host = host
     self.port = port
@@ -286,9 +286,9 @@ class Nx:
     #print(f'size:4 + {len(bs)}')    
     self.socket.sendall(head_bytes + len_bytes + bs)
 
-  def send(self, head:Head, data, ack:bool = False, id:int = 0):
+  def send(self, head:Head, data, ack:bool = False):
     if (ack):
-      remote_action = self.recv.add_remote_action(id)
+      remote_action = self.recv.add_remote_action()
       data.sn = remote_action.sn
       print('send ack:{ack}({sn}) id:{id}'.format(ack=ack, sn=data.sn, id=id))    
       self._send(head, data)
@@ -298,11 +298,15 @@ class Nx:
       #print('send ack:{ack} id:{id}'.format(ack=ack, id=id))    
       self._send(head, data)
 
+class Nx(Ngin):
+  def __init__(self, host:str):
+    super().__init__(host)
+
   def send_obj(self, data, ack:bool = False):
-    return self.send(Head.object, data, ack, data.id)
+    return self.send(Head.object, data, ack)
 
   def send_stage_info(self, data):
-    return self.send(Head.stage, data, True, 0)
+    return self.send(Head.stage, data, True)
 
   def stage_builder(self, width:float, height:float):
     c = NStageInfo()
@@ -445,7 +449,7 @@ class Nx:
     c = Cmd()
     c.strings.append('objinfo')
     c.ints.append(id)
-    remote_action = self.send(Head.cmd, c, True, id)
+    remote_action = self.send(Head.cmd, c, True)
     return remote_action.value
 
   def get_obj_info(self, id:int) -> NObjectInfo:
@@ -688,9 +692,7 @@ class Nx:
       c.ints.append(0)
       c.floats.append(0)         
 
-    self.send(Head.cmd, c, need_ack, id)
-    #if need_ack:
-    #  return self.recv.wait_ack_id(id)      
+    self.send(Head.cmd, c, need_ack)
 
   def hint(self, hint:str) -> None:
     c = Cmd()
@@ -698,7 +700,7 @@ class Nx:
     c.strings.append(hint)
     self.send(Head.cmd, c)
 
-  def svg(self, id:int, svg:str, x:float, y:float, width:float, height:float, info:str=""):
+  def svg(self, id:int, svg:str, x:float, y:float, width:float, height:float, info:str="", ack:bool=False):
     a = NClip()
     a.path = svg
     a.x = 0
@@ -727,44 +729,12 @@ class Nx:
     v.anchorX = 0
     v.anchorY = 0
     v.clips.extend([a])
-    self.send(Head.object, c)
+    self.send(Head.object, c, ack)
 
 
-class Nc:
-  def __init__(self, host:str, port:int = 4041, verbose:bool = False):
-    self.host = host
-    self.port = port
-
-    HOST = host
-    if host[3] != '.':
-      HOST = self.find_ip(f'_{self.host}._tcp.local.', verbose)  # The server's hostname or IP address
-    self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    self.socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-    self.socket.connect((HOST, self.port))
-    self.recv = Recv(self.socket)
-
-  def find_ip(self, type, verbose=False):
-      event_result_available = threading.Event()
-      zeroconf = Zeroconf()
-      listener = ServiceListener(event_result_available, verbose)
-      browser = ServiceBrowser(zeroconf, type, listener)
-      event_result_available.wait()
-      #print(f'ip:{listener.result}')
-      #try:
-      #    input("Press enter to exit...\n\n")
-      #finally:
-      #    zeroconf.close()
-      zeroconf.close()
-      return listener.result    
-
-  def send(self, head:Head, data, ack:bool = False):
-    bs = data.SerializeToString()
-    head_bytes = struct.pack('<L', head)  
-    len_bytes = struct.pack('<L', len(bs))
-    #print(f'size:4 + {len(bs)}')
-    self.socket.sendall(head_bytes + len_bytes + bs)
-    if(ack):
-      return self.recv.wait_ack()
+class Nc(Ngin):
+  def __init__(self, host:str):
+    super().__init__(host, 4041)
 
   def relay(self, strings:list[str], ints:list[int], floats:list[float]) -> None:
     c = Cmd()
@@ -774,3 +744,4 @@ class Nc:
     c.ints.extend(ints)
     c.floats.extend(floats)
     self.send(Head.cmd, c)
+    
